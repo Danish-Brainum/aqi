@@ -7,7 +7,7 @@ use League\Csv\Reader;
 use League\Csv\Writer;
 use Illuminate\Support\Facades\Http;
 use App\Models\Aqi;
-
+use Illuminate\Support\Str;
 
 class AQIController extends Controller
 {
@@ -39,13 +39,15 @@ class AQIController extends Controller
     
                 $records = $csv->getRecords();
                 $output = [];
-                foreach ($records as $record) {
+                foreach ($records as $i => $record) {
                     $normalized = array_change_key_case($record, CASE_LOWER);
                     $output[] = $this->processRecord(
+                        $normalized['id'] ?? $i,
                         $normalized['name'] ?? '',
                         $normalized['city'] ?? '',
                         $normalized['phone'] ?? ''
                     );
+                    $output;
                 }
     
                 if (empty($output)) {
@@ -63,17 +65,22 @@ class AQIController extends Controller
     
         // 2. If manual input is present (no CSV)
         if ($request->filled(['name', 'city', 'phone'])) {
-            $name = $request->input('name');
-            $city = $request->input('city');
+            $name  = $request->input('name');
+            $city  = $request->input('city');
             $phone = $request->input('phone');
-    
-            $record = $this->processRecord($name, $city, $phone);
-    
-            // Merge with existing session results
+        
+            // get existing results
             $results = session('aqi_results', []);
+        
+            // calculate next id
+            $nextId = count($results) + 1;
+        
+            // pass id into processRecord
+            $record = $this->processRecord($nextId, $name, $city, $phone);
+        
             $results[] = $record;
             session(['aqi_results' => $results]);
-    
+        
             return back()->with('results', $results)->with('success', 'Record added successfully.');
         }
     
@@ -84,7 +91,8 @@ class AQIController extends Controller
     /**
      * Handle API call + validation for a single record
      */
-    private function processRecord($name, $city, $phone)
+
+    private function processRecord($id, $name, $city, $phone)
     {
         $name = trim((string) $name);
         $city = trim((string) $city);
@@ -92,6 +100,7 @@ class AQIController extends Controller
     
         if ($name === '' || $city === '' || $phone === '') {
             return [
+                'id'    => $id,
                 'name'    => $name,
                 'city'    => $city,
                 'phone'   => $phone,
@@ -121,6 +130,7 @@ class AQIController extends Controller
         }
     
         return [
+            'id'    => $id,
             'name'    => $name,
             'city'    => $city,
             'phone'   => $phone,
@@ -128,8 +138,6 @@ class AQIController extends Controller
             'message' => $message,
         ];
     }
-    
-
 
     private function getMessage($aqi, $name, $city)
     {
@@ -217,5 +225,48 @@ class AQIController extends Controller
 
         return back()->with('success', 'Custom messages saved successfully!');
     }
+    public function update(Request $request)
+    {
+        $results = session('aqi_results', []);
+        $index = $request->input('index'); // row index
+    
+        if (isset($results[$index])) {
+            $results[$index]['name'] = $request->input('name');
+            $results[$index]['phone'] = $request->input('phone');
+            $results[$index]['message'] = $request->input('message');
+            session(['aqi_results' => $results]);
+        }
+    
+        return response()->json(['success' => true]);
+    }
+    
+    public function delete(Request $request)
+{
+    $id      = $request->input('id');
+    $results = session('aqi_results', []);
+    $deleted = session('deleted_results', []);
 
+    foreach ($results as $key => $row) {
+        if (($row['id'] ?? null) == $id) {   // 👈 loose comparison
+            $deleted[] = $row;
+            unset($results[$key]);
+
+            session(['aqi_results' => array_values($results)]);
+            session(['deleted_results' => $deleted]);
+
+            $rowHtml = view('partials.deleted-rows', ['row' => $row])->render();
+
+            return response()->json(['success' => true, 'row' => $rowHtml]);
+        }
+    }
+
+    return response()->json(['success' => false]);
+}
+
+
+
+    
+    
+    
+    
 }

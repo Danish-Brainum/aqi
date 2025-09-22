@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pakistan AQI Dashboard</title>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+
   <script src="//unpkg.com/alpinejs" defer></script>
   <style>
   [x-cloak] { display: none !important; }
@@ -147,7 +149,6 @@
         </div>
        
         @php $results = $results ?? session('aqi_results', []); @endphp
-        @if(!empty($results))
         <div class="lg:col-span-2">
           <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex items-center justify-between">
@@ -162,6 +163,7 @@
               <table id="results-table" class="min-w-full divide-y divide-slate-200">
                 <thead class="bg-slate-50">
                   <tr>
+                    <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">ID</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Name</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">City</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Phone</th>
@@ -171,8 +173,10 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 bg-white">
-                  @foreach($results as $row)
-                    <tr class="hover:bg-indigo-50/40">
+                  
+                  @forelse($results as $i => $row)
+                  <tr class="hover:bg-indigo-50/40" data-id="{{ $row['id'] }}">
+                  <td class="px-4 py-2 text-sm">{{ $row['id'] }}</td>
                       <td class="px-4 py-2 text-sm">{{ $row['name'] }}</td>
                       <td class="px-4 py-2 text-sm">{{ $row['city'] }}</td>
                       <td class="px-4 py-2 text-sm">{{ $row['phone'] }}</td>
@@ -187,12 +191,23 @@
                       <td class="px-4 py-2 text-sm">{{ $row['message'] }}</td>
                       <td class="px-4 py-2 text-sm">
                         <div class="inline-flex items-center gap-2">
-                          <button class="edit-btn inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200">Edit</button>
-                          <button class="delete-btn inline-flex items-center gap-2 rounded-md bg-red-100 px-3 py-1 text-sm text-red-700 hover:bg-red-200">Delete</button>
+                          <button class="edit-btn inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200 data-index="{{ $i }}" data-url="{{ route('records.update') }}">Edit</button>
+                          <button 
+                            class="delete-btn inline-flex items-center gap-2 rounded-md bg-red-100 px-3 py-1 text-sm text-red-700 hover:bg-red-200" 
+                            data-id="{{ $row['id'] }}" 
+                            data-url="{{ route('records.delete') }}">
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
-                  @endforeach
+                    @empty
+                  <tr class="no-records">
+                    <td colspan="12" class="px-4 py-4 text-center text-base font-bold text-slate-500">
+                      No CSV Found
+                    </td>
+                  </tr>
+                  @endforelse
                 </tbody>
               </table>
             </div>
@@ -205,20 +220,27 @@
             <table id="deleted-table" class="min-w-full divide-y divide-slate-200">
               <thead class="bg-slate-50">
                 <tr>
+                  <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">ID</th>
                   <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Name</th>
                   <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">City</th>
                   <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Phone</th>
                   <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">AQI</th>
-                  <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Message</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100 bg-white">
-                
+                @forelse(session('deleted_results', []) as $row)
+                  @include('partials.deleted-rows', ['row' => $row])
+                @empty
+                <tr class="no-records">
+                    <td colspan="12" class="px-4 py-4 text-center text-base font-bold text-slate-500">
+                      No Deleted Record Found
+                    </td>
+                  </tr>
+                @endforelse
               </tbody>
             </table>
           </div>
         </div>
-        @endif
       </div>
 
       <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mt-4" >
@@ -290,6 +312,75 @@
         </div>
       </div>
     </section>
+   <!-- Edit Modal -->
+   <!-- Edit Modal -->
+<!-- Edit Modal -->
+<div id="editModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center">
+  <!-- Animated Modal Content -->
+  <div id="modalContent" class="bg-white rounded-lg w-96 transform opacity-0 scale-95 transition-all duration-300 ease-out shadow-lg">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between border-b px-6 py-3">
+      <h2 class="text-lg font-semibold text-slate-800">Edit Record</h2>
+      <button type="button" id="closeModal" class="text-slate-500 hover:text-slate-700">
+        <!-- Heroicon X -->
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="p-6">
+      <form id="editForm">
+        <input type="hidden" id="editIndex">
+
+        <div>
+          <label class="block text-sm font-medium">Name</label>
+          <input type="text" id="editName" class="w-full border rounded px-3 py-2 mt-1 text-sm">
+        </div>
+
+        <div class="mt-3">
+          <label class="block text-sm font-medium">Phone</label>
+          <input type="text" id="editPhone" class="w-full border rounded px-3 py-2 mt-1 text-sm">
+        </div>
+
+        <div class="mt-3">
+          <label class="block text-sm font-medium">Message</label>
+          <textarea id="editMessage" rows="5" class="w-full border rounded px-3 py-2 mt-1 text-sm resize-none"></textarea>
+        </div>
+
+        <!-- Footer -->
+        <div class="flex justify-end items-center gap-3 mt-6">
+          <!-- Loader -->
+          <span id="loadingSpinner" class="hidden text-sm text-gray-500 flex items-center gap-1">
+            <svg class="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            Saving...
+          </span>
+
+          <button type="button" class="px-4 py-2 bg-gray-300 rounded" id="cancelBtn">Cancel</button>
+          <button 
+            type="submit"  
+            id="saveEditBtn" 
+            class="px-4 py-2 bg-indigo-600 text-white rounded"
+            data-url="{{ route('records.update') }}">
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+</div>
+
+    </form>
+  </div>
+</div>
   </main>
 
   <footer class="border-t border-slate-200/60 bg-white">

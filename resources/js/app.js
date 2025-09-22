@@ -198,5 +198,197 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+document.addEventListener("DOMContentLoaded", () => {
+    // CSRF token (meta tag should exist in your layout)
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrf = csrfMeta ? csrfMeta.getAttribute("content") : "";
+  
+    // Table bodies
+    const resultsTable = document.querySelector("#results-table tbody");
+    const deletedTable = document.querySelector("#deleted-table tbody");
+  
+    // Modal elements
+    const modal = document.querySelector("#editModal");
+    const modalContent = document.querySelector("#modalContent");
+  
+    // Form elements
+    const editForm = document.querySelector("#editForm");
+    const editIndex = document.querySelector("#editIndex");
+    const editName = document.querySelector("#editName");
+    const editPhone = document.querySelector("#editPhone");
+    const editMessage = document.querySelector("#editMessage");
+    const saveEditBtn = document.querySelector("#saveEditBtn");
+    const spinner = document.querySelector("#loadingSpinner");
+  
+    // Close controls (header X and footer Cancel)
+    const closeModalBtn = document.querySelector("#closeModal");
+    const cancelBtn = document.querySelector("#cancelBtn");
+  
+    // Safety: if results table doesn't exist, stop (nothing to bind)
+    if (!resultsTable) return;
+  
+    // --- Modal open/close helpers ---
+    function openModal() {
+      if (!modal || !modalContent) return;
+      modal.classList.remove("hidden");
+      // allow one frame then trigger transition classes removal
+      requestAnimationFrame(() => {
+        modalContent.classList.remove("opacity-0", "scale-95");
+        modalContent.classList.add("opacity-100", "scale-100");
+      });
+    }
+  
+    function closeModalWithAnimation() {
+      if (!modal || !modalContent) return;
+      modalContent.classList.remove("opacity-100", "scale-100");
+      modalContent.classList.add("opacity-0", "scale-95");
+      // hide overlay after animation completes (match duration in CSS: 300ms)
+      setTimeout(() => {
+        modal.classList.add("hidden");
+      }, 300);
+    }
+  
+    // Close handlers: header X, footer Cancel
+    if (closeModalBtn) {
+      closeModalBtn.addEventListener("click", () => closeModalWithAnimation());
+    }
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", () => closeModalWithAnimation());
+    }
+  
+    // Close by clicking overlay (but not when clicking modal content)
+    if (modal) {
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) {
+          closeModalWithAnimation();
+        }
+      });
+    }
+    if (modalContent) {
+      // prevent accidental propagation (optional)
+      modalContent.addEventListener("click", (e) => e.stopPropagation());
+    }
+  
+    // --- Handle clicks inside results table (delegation) ---
+    resultsTable.addEventListener("click", async (e) => {
+      // EDIT button clicked
+      const editBtn = e.target.closest(".edit-btn");
+      if (editBtn) {
+        const row = editBtn.closest("tr");
+        if (!row) return;
+        const cells = row.querySelectorAll("td");
+  
+        // Fill modal inputs (ID=0, Name=1, City=2, Phone=3, AQI=4, Message=5)
+        editIndex.value = row.dataset.id ?? ""; // hidden field (id)
+        editName.value = cells[1]?.textContent.trim() ?? "";
+        editPhone.value = cells[3]?.textContent.trim() ?? "";
+        editMessage.value = cells[5]?.textContent.trim() ?? "";
+        openModal();
+        return; // don't run delete logic
+      }
+  
+       // DELETE button clicked
+        const deleteBtn = e.target.closest(".delete-btn");
+        if (deleteBtn) {
+            const url = deleteBtn.dataset.url;
+            const id = deleteBtn.dataset.id ?? deleteBtn.closest("tr")?.dataset.id;
+            const row = deleteBtn.closest("tr");
+            if (!url || !row || !id) return;
+
+            try {
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": csrf,
+                    },
+                    body: JSON.stringify({ id }),   // <-- send id, not index
+                });
+
+                const json = await res.json();
+                if (json && json.success) {
+                    // remove row from active table
+                    row.remove();
+
+                    // append to deleted table
+                    if (deletedTable) {
+                        const noRecordRow = deletedTable.querySelector(".no-records");
+                        if (noRecordRow) noRecordRow.remove();
+
+                        if (json.row) {
+                            deletedTable.insertAdjacentHTML("beforeend", json.row);
+                        }
+                    }
+                } else {
+                    console.warn("Delete request returned failure:", json);
+                }
+            } catch (err) {
+                console.error("Delete request error:", err);
+            }
+
+            return;
+        }
+
+    });
+  
+    // --- Save Edit (modal form submit) ---
+    if (editForm) {
+      editForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!saveEditBtn) return;
+  
+        const url = saveEditBtn.dataset.url;
+        if (!url) {
+          console.error("Save URL not found on Save button (data-url).");
+          return;
+        }
+  
+        const data = {
+            id: editIndex.value,
+            name: editName.value,
+            phone: editPhone.value,
+            message: editMessage.value,
+        };
+          
+        // show spinner + disable save
+        if (spinner) spinner.classList.remove("hidden");
+        saveEditBtn.disabled = true;
+  
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-TOKEN": csrf,
+            },
+            body: JSON.stringify(data),
+          });
+          const json = await res.json();
+  
+          if (json && json.success) {
+            const row = resultsTable.querySelector(`tr[data-id='${data.id}']`);
+            if (row) {
+              const cells = row.querySelectorAll("td");
+              if (cells[1]) cells[1].textContent = data.name;    // Name
+              if (cells[3]) cells[3].textContent = data.phone;   // Phone
+              if (cells[5]) cells[5].textContent = data.message; // Message
+            }
+          
+            // close modal with animation
+            closeModalWithAnimation();
+          } else {
+            console.warn("Update request returned failure:", json);
+          }
+        } catch (err) {
+          console.error("Update request error:", err);
+        } finally {
+          if (spinner) spinner.classList.add("hidden");
+          saveEditBtn.disabled = false;
+        }
+      });
+    }
+  });
+  
+
 
 
