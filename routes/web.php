@@ -13,7 +13,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/save_messages', [AQIController::class, 'saveMessages'])->name('save_messages');
     Route::post('/records/update', [AQIController::class, 'update'])->name('records.update');
     Route::post('/records/delete', [AQIController::class, 'delete'])->name('records.delete');
+    Route::get('/deleted-table', [AQIController::class, 'deletedTable'])->name('deleted.table');
+    Route::get('/status', [AQIController::class, 'status'])->name('status');
+    Route::get('/fetch-all', [AQIController::class, 'fetchAll'])->name('fetch.all');
     
+
     // Profile
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.show');
     Route::post('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');

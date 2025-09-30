@@ -1,6 +1,7 @@
 <tr data-id="{{ $row['id'] }}">
   <td class="px-4 py-2 text-sm">{{ $row['id'] }}</td>
   <td class="px-4 py-2 text-sm">{{ $row['name'] }}</td>
+  <td class="px-4 py-2 text-sm">{{ $row['email'] }}</td>
   <td class="px-4 py-2 text-sm">{{ $row['city'] }}</td>
   <td class="px-4 py-2 text-sm">{{ $row['phone'] }}</td>
   <td class="px-4 py-2 text-sm font-semibold">
@@ -11,6 +12,4 @@
       {{ $row['aqi'] ?? 'N/A' }}
     </span>
   </td>
-  <td class="px-4 py-2 text-sm">{{ $row['message'] ?? '' }}</td>
 </tr>
-
