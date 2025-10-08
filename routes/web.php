@@ -16,8 +16,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/deleted-table', [AQIController::class, 'deletedTable'])->name('deleted.table');
     Route::get('/status', [AQIController::class, 'status'])->name('status');
     Route::get('/fetch-all', [AQIController::class, 'fetchAll'])->name('fetch.all');
-    
-
+    Route::post('/sendEmails', [AQIController::class, 'sendEmails'])->name('sendEmails');
+    Route::post('/sendWhatsapp', [AQIController::class, 'sendWhatsapp'])->name('sendWhatsapp');
+    Route::post('/save-CSV', [AQIController::class, 'saveCSV'])->name('saveCSV');
+    Route::post('/add-manual-record', [AQIController::class, 'addManualRecord'])->name('add-manual-record');
     // Profile
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.show');
     Route::post('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');

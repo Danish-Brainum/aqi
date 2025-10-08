@@ -594,25 +594,36 @@ import './bootstrap';
 import { initTabs } from './tabs/tabs';
 import { initDragDrop } from './upload/dragDrop';
 import { initProfileDropdown } from './profile/dropdown';
-import { initSendModal } from './modals/send';
+import { initWhatsappModal } from './modals/whatsapp';
+import { initEmailModal } from './modals/email';
 import { initEditModal } from './modals/edit';
 import { initRecordModal } from './modals/record';
 import { initResultsTable } from './tables/results';
-import { initDeletedTable } from './tables/deleted';
+// import { initDeletedTable } from './tables/deleted';
 import { initStatusTable } from './tables/status';
 import { initSearch } from './utils/search';
 import { injectLoaderCss } from './utils/loader';
+import { initWhatsappMessageModal } from "./modals/whatsapp-message.js";
+import { initEmailMessageModal } from "./modals/email-message.js";
+import { initSaveCSV } from "./upload/save-csv.js";
+import { initSaveOnLogoutConfirmation } from "./confirmation/save-on-logout.js";
 
-document.addEventListener('DOMContentLoaded', () => {
+
+document.addEventListener("DOMContentLoaded", () => {
+
     initTabs();
     initDragDrop();
     initProfileDropdown();
-    initSendModal();
+    initWhatsappModal();
+    initEmailModal();
     initEditModal();
     initRecordModal();
     initResultsTable();
-    initDeletedTable();
     initStatusTable();
     initSearch();
     injectLoaderCss();
-});
+    initWhatsappMessageModal();
+    initEmailMessageModal();
+    initSaveCSV();
+    initSaveOnLogoutConfirmation();
+})

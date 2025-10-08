@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CSV;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
@@ -62,13 +64,6 @@ class AuthController extends Controller
         return view('dashboard');
     }
 
-    public function logout(Request $request)
-    {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        return redirect()->route('home');
-    }
 
     public function showProfile()
     {
@@ -95,6 +90,14 @@ class AuthController extends Controller
         $user->save();
 
         return back()->with('success', 'Profile updated successfully.');
+    }
+    
+    public function logout(Request $request)
+    {   
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect()->route('home');
     }
 }
 

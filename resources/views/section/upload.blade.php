@@ -44,7 +44,7 @@
         <div class="order-3 lg:order-2 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex items-center justify-center">
           <button id="open-modal"
             class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            + Add Custom Record
+            + Add Manual Record
           </button>
         </div>
       
@@ -58,23 +58,37 @@
   {{-- Uploaded Results Table (col-span-8) --}}
   <div class="lg:col-span-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
     <div class="flex items-center justify-between">
-      <h3 class="text-base font-semibold text-slate-800">Uploaded Results</h3>
+      <h3 class="text-base font-semibold text-slate-800">Customers</h3>
       <div class="flex items-center gap-3">
-   
-        <input 
-          type="text" 
-          id="tableSearch" 
-          placeholder="Search..." 
-          class="rounded-full border border-slate-300 px-4 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-        <a href="{{ route('download') }}" id="download-btn"
-        class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-white shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-        Download CSV
-      </a>
-      <button id="open-send-modal"
+      {{-- <button id="open-whatsapp-modal"
   class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+  Whatsapp
+</button> --}}
+{{-- <button id="open-email-modal"
+  class="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-2 text-white shadow hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">
+  Email
+</button> --}}
+<input 
+type="text" 
+id="tableSearch" 
+placeholder="Search..." 
+class="rounded-full border border-slate-300 px-4 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+>
+<button id="open-email-modal" class="border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white px-4 py-2 rounded-lg shadow transition">
+  Messages
+</button>
+
+<button id="save-CSV" data-url="{{ route('saveCSV') }}" class="border border-blue-700 text-blue-700 hover:bg-blue-700 hover:text-white px-4 py-2 rounded-lg shadow transition">
+  Save
+</button>
+
+<button id="send-emails-btn" data-url="{{ route('sendEmails') }}" class="border border-indigo-500 text-indigo-500 hover:bg-indigo-500 hover:text-white px-4 py-2 rounded-lg shadow transition">
   Send
 </button>
+
+<a href="{{ route('download') }}" id="download-btn" class="border border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white px-4 py-2 rounded-lg shadow transition">
+  Download
+</a>
 
       </div>
     </div>    
@@ -149,7 +163,7 @@
   {{-- Deleted Records Section (col-span-4) --}}
 
   <div id="deleted-container" class="lg:col-span-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-    <h3 class="text-base font-semibold text-slate-800">Deleted Records</h3>
+    <h3 class="text-base font-semibold text-slate-800">Deleted Customers</h3>
 
     {{-- Just yield table content here --}}
     <div id="deleted-table-wrapper">
@@ -163,4 +177,5 @@
   
   {{-- Modal --}}
 @include('modal.manual-add-record')
-@include('modal.send')
+@include('modal.whatsapp')
+@include('modal.email-message')

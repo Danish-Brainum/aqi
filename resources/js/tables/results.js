@@ -11,8 +11,8 @@ export function initResultsTable() {
         try{
             const res = await fetch(fetchUrl, { headers:{ 'X-Requested-With':'XMLHttpRequest' } });
             if(!res.ok) throw new Error('Failed to fetch deleted table');
-            const html = await res.text();
-            document.querySelector('#deleted-table-wrapper').innerHTML = html;
+            const json = await res.json();
+            document.querySelector('#deleted-table-wrapper').innerHTML = json.html;
         } catch(err){ console.error(err); }
     }
 
@@ -43,4 +43,36 @@ export function initResultsTable() {
             } catch(err){ console.error(err); }
         }
     });
+
+
+    // Pagination clicks
+    document.addEventListener("click", async e => {
+        const link = e.target.closest("#deleted-table-wrapper a[href]");
+        if(link){
+            e.preventDefault();
+            await refreshDeletedTable(link.href);
+        }
+    });
+
+    // deleted-table pagination clicks
+    document.addEventListener("click", async e => {
+        const link = e.target.closest("#deleted-table-wrapper a[data-page]");
+        if(link){
+            e.preventDefault();
+            const perPage = document.getElementById("deleted-length").value || 10;
+            const page = link.dataset.page;
+            const url = `${deletedUrl}?deleted_page=${page}&perPage=${perPage}`;
+            await refreshDeletedTable(url);
+        }
+    });
+
+    // deleted-table perPage change
+    document.addEventListener("change", async e => {
+        if(e.target.id === "deleted-length"){
+            const perPage = e.target.value;
+            const url = `${deletedUrl}?perPage=${perPage}&deleted_page=1`; // reset page to 1
+            await refreshDeletedTable(url);
+        }
+    });
+
 }

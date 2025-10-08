@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'token' => env('WHATSAPP_CLOUD_TOKEN'),
+        'phoneNumberId' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'version' => env('WHATSAPP_API_VERSION'),
+    ],
+    'IQAir' => [
+        'token' => env('IQAIR_API_KEY')
+    ]
 ];

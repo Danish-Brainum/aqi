@@ -7,6 +7,7 @@ export function initEditModal() {
     const editForm = document.querySelector("#editForm");
     const editIndex = document.querySelector("#editIndex");
     const editName = document.querySelector("#editName");
+    const editEmail = document.querySelector("#editEmail");
     const editPhone = document.querySelector("#editPhone");
     const editMessage = document.querySelector("#editMessage");
     const saveEditBtn = document.querySelector("#saveEditBtn");
@@ -46,8 +47,9 @@ export function initEditModal() {
         const cells = row.querySelectorAll("td");
         editIndex.value = row.dataset.id ?? "";
         editName.value = cells[1]?.textContent.trim() ?? "";
-        editPhone.value = cells[3]?.textContent.trim() ?? "";
-        editMessage.value = cells[5]?.textContent.trim() ?? "";
+        editEmail.value = cells[2]?.textContent.trim() ?? "";
+        editPhone.value = cells[4]?.textContent.trim() ?? "";
+        editMessage.value = cells[6]?.textContent.trim() ?? "";
         openModal();
     });
 
@@ -60,6 +62,7 @@ export function initEditModal() {
         const data = {
             id: editIndex.value,
             name: editName.value,
+            email: editEmail.value,
             phone: editPhone.value,
             message: editMessage.value,
         };
@@ -82,13 +85,21 @@ export function initEditModal() {
                 if (row) {
                     const cells = row.querySelectorAll("td");
                     if (cells[1]) cells[1].textContent = data.name;
-                    if (cells[3]) cells[3].textContent = data.phone;
-                    if (cells[5]) cells[5].textContent = data.message;
+                    if (cells[2]) cells[2].textContent = data.email;
+                    if (cells[4]) cells[4].textContent = data.phone;
+                    if (cells[6]) cells[6].textContent = data.message;
                 }
                 closeModalWithAnimation();
-            } else console.warn("Update failed:", json);
+                showAlert("Record updated successfully!", "success"); // ✅ Success alert
+
+            } else {
+                console.alert("Update failed:", json);
+                showAlert("Update failed! Please try again.", "error"); // ❌ Error alert
+            }
         } catch (err) {
             console.error(err);
+            showAlert("An error occurred. Please try again.", "error"); // ❌ Catch error
+
         } finally {
             spinner?.classList.add("hidden");
             saveEditBtn.disabled = false;

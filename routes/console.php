@@ -9,4 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Run AQI fetch every 12 hours
-Schedule::command('aqi:fetch')->everySixHours();
+Schedule::command('app:fetch')->everySixHours();
+// Schedule::command('app:email-message')->dailyAt('9:00')->withoutOverlapping();
+Schedule::command('app:email-message')->everyMinute()->withoutOverlapping();
+Schedule::command('app:whatsapp-message')->everyMinute()->withoutOverlapping();

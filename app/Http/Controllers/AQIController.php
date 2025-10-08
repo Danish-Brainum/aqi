@@ -3,25 +3,52 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\FetchAqiJob;
+use App\Jobs\SendWhatsappMessageJob;
+use App\Mail\AutoReportMail;
 use App\Models\Aqi;
 use App\Models\City;
+use App\Models\CSV;
+use App\Services\CSVService;
+use App\Services\WhatsappService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use League\Csv\Reader;
 use League\Csv\Writer;
 
 class AQIController extends Controller
 {
+
     public function index(Request $request)
     {
+        // If session has results, use them, else load from DB
         $results = session('aqi_results', []);
     
-        // paginate results (uploaded)
-        $perPage = 10;
+        if (empty($results)) {
+            // ✅ fetch from DB if session is empty
+            $results = CSV::all()->map(function ($row) {
+                return [
+                    'id'      => $row->id,
+                    'name'    => $row->name,
+                    'email'   => $row->email,
+                    'city'    => $row->city,
+                    'phone'   => $row->phone,
+                    'aqi'     => $row->aqi,
+                    'message' => $row->message,
+                ];
+            })->toArray();
+        }
+
+        session()->put('aqi_results', $results);
+    
+        // paginate results
+        $perPage = $request->query('perPage', 10);
         $page = Paginator::resolveCurrentPage('page');
         $paginatedResults = new LengthAwarePaginator(
             collect($results)->forPage($page, $perPage),
@@ -42,22 +69,27 @@ class AQIController extends Controller
             ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'deleted_page']
         );
     
-        // ✅ get cities for Analytics tab
+        // ✅ get cities for aqi_info tab
         $cities = City::select('id', 'name', 'aqi', 'status')->get();
+        $email_messages = AQI::where('type', 'email')->pluck('message', 'range')->toArray();
+        $whatsapp_messages = AQI::where('type', 'whatsapp')->pluck('message', 'range')->toArray();
     
         return view('dashboard', [
             'results' => $paginatedResults,
             'deleted_results' => $paginatedDeleted,
-            'cities' => $cities,   // ✅ pass cities here
+            'cities' => $cities,
+            'email_messages' => $email_messages,
+            'whatsapp_messages' => $whatsapp_messages
         ]);
     }
+    
     
 
     public function status()
     {
         // return raw JSON instead of view
         return response()->json(
-            City::select('id', 'name', 'email', 'state', 'aqi', 'status')->get()
+            City::select('id', 'name', 'state', 'aqi', 'status')->get()
         );
     }
 
@@ -110,32 +142,39 @@ class AQIController extends Controller
             }
         }
     
-        // 2. If manual input is present (no CSV)
-        if ($request->filled(['name', 'email', 'city', 'phone'])) {
-            $name  = $request->input('name');
-            $email  = $request->input('email');
-            $city  = $request->input('city');
-            $phone = $request->input('phone');
-        
-            // get existing results
-            $results = session('aqi_results', []);
-        
-            // calculate next id
-            $nextId = count($results) + 1;
-        
-            // pass id into processRecord
-            $record = $this->processRecord($nextId, $name, $email, $city, $phone);
-        
-            $results[] = $record;
-            session(['aqi_results' => $results]);
-        
-            return back()->with('results', $results)->with('success', 'Record added successfully.');
-        }
-    
-        // 3. If neither provided
         return back()->with('error', 'Please upload a CSV file or provide Name, Email, City, and Phone.');
     }
     
+    public function addManualRecord(Request $request) {
+        $name  = $request->input('name');
+        $email = $request->input('email');
+        $city  = $request->input('city');
+        $phone = $request->input('phone');
+
+        // ✅ Check session first
+        $results = session('aqi_results', []);
+
+        // ✅ If session is empty → fallback to DB
+        if (empty($results)) {
+            $results = CSV::all()->toArray();
+        }
+
+        // ✅ Calculate next ID
+        $maxId = 0;
+        foreach ($results as $row) {
+            $maxId = max($maxId, $row['id']);
+        }
+        $nextId = $maxId + 1;
+
+        // ✅ Create new record
+        $record = $this->processRecord($nextId, $name, $email, $city, $phone);
+
+        // ✅ Append & store in session
+        $results[] = $record;
+        session(['aqi_results' => $results]);
+
+        return back()->with('results', $results)->with('success', 'Record added successfully.');
+    }
     /**
      * Handle API call + validation for a single record
      */
@@ -160,20 +199,6 @@ class AQIController extends Controller
         }
     
         try {
-        //     $response = Http::get("https://api.airvisual.com/v2/city", [
-        //         'city'    => $city,
-        //         'state'   => $this->getStateByCity($city),
-        //         'country' => 'Pakistan',
-        //         'key'     => env('IQAIR_API_KEY'),
-        //     ]);
-    
-        //     if ($response->successful() && $response->json('status') === 'success') {
-        //         $aqi = $response->json('data.current.pollution.aqius');
-        //         $message = $this->getMessage($aqi, $name, $city);
-        //     } else {
-        //         $aqi = null;
-        //         $message = "City not found or API error.";
-        //     }
         $aqi = City::where('name', $city)->pluck("aqi")->first();
         $message = $this->getMessage($aqi, $name, $city);
     } catch (\Throwable $e) {
@@ -181,7 +206,7 @@ class AQIController extends Controller
             $message = "Could not fetch AQI (" . $e->getMessage() . ").";
             Log::info("Could not fetch AQI (" . $e->getMessage() . ")");
         }
-    
+
         return [
             'id'    => $id,
             'name'    => $name,
@@ -198,10 +223,8 @@ class AQIController extends Controller
         if (is_null($aqi)) {
             return "Hi {$name}, we couldn’t retrieve air quality data for {$city}.";
         }
-
         // Load custom messages from DB
-        $messages = Aqi::pluck('message','range')->toArray();
-        // dd($messages);
+        $messages = Aqi::where('type', 'email')->pluck('message','range')->toArray();
 
         if ($aqi <= 50) {
             return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['good'] ?? "the air quality in {$city} is Good 😊 (AQI: {$aqi}). Enjoy your day!");
@@ -245,66 +268,99 @@ class AQIController extends Controller
             'very_unhealthy',
             'hazardous',
         ]);
-
+    
+        $type = $request->input('type'); // whatsapp or email
+    
         foreach ($data as $range => $message) {
             if (!empty($message)) {
-                Aqi::updateOrCreate(
-                    ['range' => $range],
+                AQI::updateOrCreate(
+                    ['range' => $range, 'type' => $type],
                     ['message' => $message]
                 );
             }
         }
-
-        return back()->with('success', 'Custom messages saved successfully!');
-    }
-    public function update(Request $request)
-    {
-        $results = session('aqi_results', []);
-        $index = $request->input('index'); // row index
     
-        if (isset($results[$index])) {
-            $results[$index]['name'] = $request->input('name');
-            $results[$index]['email'] = $request->input('email');
-            $results[$index]['phone'] = $request->input('phone');
-            $results[$index]['message'] = $request->input('message');
-            session(['aqi_results' => $results]);
+        // ✅ Refresh the existing session results with new messages
+        $results = session('aqi_results', []);
+        foreach ($results as $key => $row) {
+            $results[$key]['message'] = $this->getMessage($row['aqi'], $row['name'], $row['city']);
         }
     
-        return response()->json(['success' => true]);
+        // ✅ Store the updated data back to session
+        session(['aqi_results' => $results]);
+    
+        return back()
+            ->with('results', $results)
+            ->with('success', ucfirst($type) . ' messages saved successfully and updated in the table!');
     }
     
+    
+    public function update(Request $request)
+    {
+        $id = $request->input('id');
+
+        $results = session('aqi_results', []);
+            foreach ($results as &$record) {
+                if ($record['id'] == $id) {
+                    $record['name']    = $request->input('name');
+                    $record['email']   = $request->input('email');
+                    $record['phone']   = $request->input('phone');
+                    $record['message'] = $request->input('message');
+                    break;
+                }
+            }
+            session(['aqi_results' => $results]);
+            return response()->json(['success' => true, 'message' => 'Record updated in session']);
+    }
+
     public function delete(Request $request)
     {
         $id = $request->input('id');
         $results = session('aqi_results', []);
         $deleted = session('deleted_results', []);
+
+        // ✅ Case 1: session has results
+        if (!empty($results)) {
+            foreach ($results as $key => $row) {
+                if (($row['id'] ?? null) == $id) {
+                    // PREPEND deleted item into deleted_results
+                    array_unshift($deleted, $row);
     
-        foreach ($results as $key => $row) {
-            if (($row['id'] ?? null) == $id) {   // loose comparison
-                // PREPEND the deleted item so newest deleted appear first
-                array_unshift($deleted, $row);
+                    // remove from active results (but not from DB)
+                    unset($results[$key]);
     
-                // remove from active results
-                unset($results[$key]);
-    
-                session(['aqi_results' => array_values($results)]);
-                session(['deleted_results' => $deleted]);
-    
-                // return single-row HTML (used when you want to append a row — we won't rely on this,
-                // but keep it for compatibility)
-                $rowHtml = view('partials.deleted-rows', ['row' => $row])->render();
-    
-                return response()->json(['success' => true, 'row' => $rowHtml]);
+                    // update sessions
+                    session(['aqi_results' => array_values($results)]);
+                    session(['deleted_results' => $deleted]);
+
+                    // return deleted row html
+                    $rowHtml = view('partials.deleted-rows', ['row' => $row])->render();
+
+                    return response()->json(['success' => true, 'row' => $rowHtml]);
+                }
             }
         }
-    
+
+        // ✅ Case 2: session empty → delete from DB
+        $row = CSV::find($id);
+
+        if ($row) {
+             // mark this row as deleted in session
+            $deletedRow = $row->toArray();
+            array_unshift($deleted, $deletedRow);
+            session(['deleted_results' => $deleted]);
+
+            $rowHtml = view('partials.deleted-rows', ['row' => $deletedRow])->render();
+            return response()->json(['success' => true, 'row' => $rowHtml]);
+        }
+
         return response()->json(['success' => false]);
     }
+
     public function deletedTable(Request $request)
     {
         $deleted_results = session('deleted_results', []);
-    
-        $perPage = 10;
+        $perPage = $request->query('perPage', 10);
         $page = Paginator::resolveCurrentPage('deleted_page');
     
         $deleted_results = new LengthAwarePaginator(
@@ -315,25 +371,153 @@ class AQIController extends Controller
             ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'deleted_page']
         );
     
-        // Return only partial HTML (AJAX target)
-        return view('partials.deleted-table', compact('deleted_results'));
+        $html = view('partials.deleted-table', compact('deleted_results'))->render();
+    
+        // ✅ Return JSON with `html` key
+        return response()->json(['html' => $html]);
     }
+    
+    
     public function fetchAll()
     {
-        $cities = \App\Models\City::all();
+        $cities = City::all();
         $delaySeconds = 0;
     
         foreach ($cities as $city) {
             // Immediately mark as processing so UI shows spinner right away
             $city->update(['status' => 'processing']);
     
-            dispatch(new \App\Jobs\FetchAqiJob($city->name, $city->state))
+            dispatch(new FetchAqiJob($city->name, $city->state))
                 ->delay(now()->addSeconds($delaySeconds));
     
             $delaySeconds += 12; // space each job by 12 seconds
         }
     
-        return response()->json(['success' => 'AQI jobs dispatched successfully with 12s spacing.']);
+        return response()->json(['success' => 'Cities are updating successfully.']);
     }
+
+
+
+    public function sendEmails(Request $request)
+    {
+        // Try to get results from session
+        $results = session('aqi_results', []);
+
+        // If session is empty or null, load from AQI model
+        if (empty($results)) {
+            $results = AQI::whereNotNull('email')
+                ->get(['email', 'message'])
+                ->toArray();
+        }
+
+        // Prepare and clean valid email entries
+        $emails = collect($results)
+            ->filter(fn($item) => !empty($item['email']) && !empty($item['message']))
+            ->unique('email')
+            ->values();
+
+        if ($emails->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'No valid emails found.']);
+        }
+
+        // Loop and send emails
+        foreach ($emails as $email) {
+            try {
+                $data = [
+                    'email' => $email['email'],
+                    'message' => $email['message'],
+                ];
+
+                Mail::to($email['email'])->send(new AutoReportMail($data));
+            } catch (\Exception $e) {
+                Log::error("Failed sending email to {$email['email']}: " . $e->getMessage());
+            }
+        }
+
+        return response()->json(['success' => true, 'count' => $emails->count()]);
+    }
+
+
+    public function sendWhatsapp()
+    {
+        $cities = City::select('name', 'aqi')->get();
+        $message = AQI::where('type', 'whatsapp')->get();
+
+        // dd($cities, $message);
+        if ($cities->isEmpty()) {
+            return back()->with('error', 'No records found to send WhatsApp messages.');
+        }
+
+        foreach ($cities as $row) {
+            if ($row['aqi'] != 'Error') {
+                $to = "923045039326"; // Or $row['phone'] if exists
+                if ($row['aqi'] <= 50) {
+                    $message = ($messages['good'] ?? "the air quality in {$row['name']} is Good 😊 (AQI: {$row['aqi']}). Enjoy your day!");
+                } elseif ($row['aqi'] <= 100) {
+                    $message = ($messages['moderate'] ?? "the air quality in {$row['name']} is Moderate 🙂 (AQI: {$row['aqi']}). It’s generally okay.");
+                } elseif ($row['aqi'] <= 150) {
+                    $message = ($messages['unhealthy_sensitive'] ?? "the air quality in {$row['name']} is Unhealthy for Sensitive Groups 😷 (AQI: {$row['aqi']}). Be careful if you have breathing issues.");
+                } elseif ($row['aqi'] <= 200) {
+                    $message = ($messages['unhealthy'] ?? "the air quality in {$row['name']} is Unhealthy ❌ (AQI: {$row['aqi']}). Try to limit outdoor activity.");
+                } elseif ($row['aqi'] <= 300) {
+                    $message = ($messages['very_unhealthy'] ?? "the air quality in {$row['name']} is Very Unhealthy ⚠️ (AQI: {$row['aqi']}). Consider staying indoors.");
+                } else {
+                    $message = ($messages['hazardous'] ?? "the air quality in {$row['name']} is Hazardous ☠️ (AQI: {$row['aqi']}). Stay safe and avoid going outside.");
+                }
+                // dump( $row['name'], $row['aqi'], $message);
+                dispatch(new SendWhatsappMessageJob($to, $row['name'], $row['aqi'], $message));
+            }
+        }
+
+        // dd('fasdfsa');
+        return back()->with('success', 'WhatsApp messages are being sent in background.');
+    }
+
+    public function saveCSV(Request $request)
+    {
+        try {
+            $results = session('aqi_results', []);
+            $deleted = session('deleted_results', []);
     
+            // dd($deleted);
+            // ✅ Step 1: Delete rows marked as deleted
+            if (!empty($deleted)) {
+                $idsToDelete = collect($deleted)->pluck('id')->filter()->toArray();
+                if (!empty($idsToDelete)) {
+                    CSV::whereIn('id', $idsToDelete)->delete();
+                    Log::info('Deleted records: ' . implode(',', $idsToDelete));                    
+                }
+            }
+            DB::beginTransaction(); 
+    
+            Log::info('Upserting CSV records...');
+    
+          
+            CSV::upsert(
+                $results,
+                ['id'], 
+                ['name','email', 'city', 'phone', 'aqi', 'message']
+            );
+             
+    
+            DB::commit();
+    
+            session(['aqi_results' => $results]);
+            Log::info('CSV data saved successfully.');
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'All results stored successfully!'
+            ]);
+    
+        } catch (Exception $e) {
+            DB::rollBack(); // ✅ rollback transaction on error
+            Log::error("Error saving results: " . $e->getMessage());
+    
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saving results.'
+            ]);
+        }
+    }
 }

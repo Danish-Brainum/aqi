@@ -24,6 +24,11 @@
         </div>
 
         <div class="mt-3">
+          <label class="block text-sm font-medium">Email</label>
+          <input type="text" id="editEmail" class="w-full border rounded px-3 py-2 mt-1 text-sm">
+        </div>
+
+        <div class="mt-3">
           <label class="block text-sm font-medium">Phone</label>
           <input type="text" id="editPhone" class="w-full border rounded px-3 py-2 mt-1 text-sm">
         </div>
