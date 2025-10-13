@@ -2,7 +2,7 @@ export function initEditModal() {
     const modal = document.querySelector("#editModal");
     const modalContent = document.querySelector("#modalContent");
     const closeModalBtn = document.querySelector("#closeModal");
-    const cancelBtn = document.querySelector(".cancelBtn");
+    const cancelBtn = document.querySelector("#cancelBtn");
 
     const editForm = document.querySelector("#editForm");
     const editIndex = document.querySelector("#editIndex");

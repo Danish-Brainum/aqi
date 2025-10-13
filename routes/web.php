@@ -1,8 +1,10 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AQIController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\SettingsController;
+use Illuminate\Support\Facades\Route;
+
 
 
 // Authenticated dashboard (home)
@@ -23,6 +25,8 @@ Route::middleware('auth')->group(function () {
     // Profile
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.show');
     Route::post('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');
+
+    Route::put('/settings/update', [SettingsController::class, 'update'])->name('settings.update');
 
     Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

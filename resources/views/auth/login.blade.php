@@ -36,10 +36,10 @@
             <input type="email" name="email" value="{{ old('email') }}" required autofocus class="input w-full mt-1" />
           </div>
           <div>
-            <div class="flex items-center justify-between">
+            {{-- <div class="flex items-center justify-between">
               <label class="block text-sm font-medium text-slate-700">Password</label>
               <a href="#" class="text-sm font-semibold  text-indigo-600 hover:underline">Forgot password?</a>
-            </div>
+            </div> --}}
             <input type="password" name="password" required class="input w-full mt-1" />
           </div>
           <label class="inline-flex items-center gap-2 text-sm text-slate-600">
