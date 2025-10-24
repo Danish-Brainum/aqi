@@ -71,7 +71,7 @@
                 <label for="morning_time" class="block text-sm font-medium text-gray-700 mb-1">Morning Time</label>
                 <input type="time" id="morning_time" name="morning_time"
                       min="00:00" max="11:59"
-                      value="{{ old('morning_time', $settings->morning_time ?? '09:00') }}"
+                      value="{{ $settings->morning_time }}"
                       class="w-full rounded-md border border-gray-300 px-2 py-1 text-gray-800 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
               </div>
         
@@ -79,7 +79,7 @@
                 <label for="evening_time" class="block text-sm font-medium text-gray-700 mb-1">Evening Time</label>
                 <input type="time" id="evening_time" name="evening_time"
                       min="12:00" max="23:59"
-                      value="{{ old('evening_time', $settings->evening_time ?? '18:00') }}"
+                      value="{{ $settings->evening_time }}"
                       class="w-full rounded-md border border-gray-300 px-2 py-1 text-gray-800 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                       
               </div>

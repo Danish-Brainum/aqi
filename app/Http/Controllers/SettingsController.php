@@ -55,12 +55,22 @@ class SettingsController extends Controller
     {
        // Get the global settings record
         // dd($settings);
+        // Always get the first (and only) settings record
+        $settings = Settings::first();
 
-        // Update morning & evening times
-        Settings::updateOrCreate([
-            'morning_time' => $request->morning_time,
-            'evening_time' => $request->evening_time,
-        ]);
+        if (!$settings) {
+            // If no record exists, create one
+            $settings = Settings::create([
+                'morning_time' => $request->morning_time,
+                'evening_time' => $request->evening_time,
+            ]);
+        } else {
+            // If record exists, update it
+            $settings->update([
+                'morning_time' => $request->morning_time,
+                'evening_time' => $request->evening_time,
+            ]);
+        }
 
         return response()->json([
             'success' => true,

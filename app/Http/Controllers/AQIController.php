@@ -8,6 +8,7 @@ use App\Mail\AutoReportMail;
 use App\Models\AQI;
 use App\Models\City;
 use App\Models\CSV;
+use App\Models\Settings;
 use App\Services\CSVService;
 use App\Services\WhatsappService;
 use Exception;
@@ -73,13 +74,15 @@ class AQIController extends Controller
         $cities = City::select('id', 'name', 'aqi', 'status')->get();
         $email_messages = AQI::where('type', 'email')->pluck('message', 'range')->toArray();
         $whatsapp_messages = AQI::where('type', 'whatsapp')->pluck('message', 'range')->toArray();
+        $settings = Settings::first();
     
         return view('dashboard', [
             'results' => $paginatedResults,
             'deleted_results' => $paginatedDeleted,
             'cities' => $cities,
             'email_messages' => $email_messages,
-            'whatsapp_messages' => $whatsapp_messages
+            'whatsapp_messages' => $whatsapp_messages,
+            'settings' => $settings
         ]);
     }
     
