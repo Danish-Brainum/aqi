@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\FetchAqiJob;
 use App\Jobs\SendWhatsappMessageJob;
 use App\Mail\AutoReportMail;
-use App\Models\Aqi;
+use App\Models\AQI;
 use App\Models\City;
 use App\Models\CSV;
 use App\Services\CSVService;
