@@ -14,10 +14,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Run AQI fetch every 12 hours
-Schedule::command('app:fetch')->everySixHours();
-// Schedule::command('app:email-message')->dailyAt('9:00')->withoutOverlapping();
-Schedule::command('app:email-message')->everyMinute()->withoutOverlapping();
-Schedule::command('app:whatsapp-message')->everyMinute()->withoutOverlapping();
+// Schedule::command('app:fetch')->everySixHours();
+// // Schedule::command('app:email-message')->dailyAt('9:00')->withoutOverlapping();
+// Schedule::command('app:email-message')->everyMinute()->withoutOverlapping();
+// Schedule::command('app:whatsapp-message')->everyMinute()->withoutOverlapping();
 
 
 try {
@@ -37,22 +37,26 @@ try {
     Schedule::command('app:email-message')
         ->dailyAt($morning)
         ->withoutOverlapping()
+        ->appendOutputTo(storage_path('logs/email_message.log'))
         ->runInBackground();
 
     Schedule::command('app:whatsapp-message')
         ->dailyAt($morning)
         ->withoutOverlapping()
+             ->appendOutputTo(storage_path('logs/whatsapp_message.log'))
         ->runInBackground();
 
     // Schedule: both commands in evening
     Schedule::command('app:email-message')
         ->dailyAt($evening)
         ->withoutOverlapping()
+        ->appendOutputTo(storage_path('logs/email_message.log'))
         ->runInBackground();
 
     Schedule::command('app:whatsapp-message')
         ->dailyAt($evening)
         ->withoutOverlapping()
+        ->appendOutputTo(storage_path('logs/whatsapp_message.log'))
         ->runInBackground();
 
 } catch (\Throwable $e) {
