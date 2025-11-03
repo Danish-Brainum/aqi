@@ -224,7 +224,7 @@ class AQIController extends Controller
     private function getMessage($aqi, $name, $city)
     {
         if (is_null($aqi)) {
-            return "Hi {$name}, we couldn’t retrieve air quality data for {$city}.";
+            return "Hi {$name}, we couldn't retrieve air quality data for {$city}.";
         }
         // Load custom messages from DB
         $messages = Aqi::where('type', 'email')->pluck('message','range')->toArray();
@@ -232,7 +232,7 @@ class AQIController extends Controller
         if ($aqi <= 50) {
             return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['good'] ?? "the air quality in {$city} is Good 😊 (AQI: {$aqi}). Enjoy your day!");
         } elseif ($aqi <= 100) {
-            return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['moderate'] ?? "the air quality in {$city} is Moderate 🙂 (AQI: {$aqi}). It’s generally okay.");
+            return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['moderate'] ?? "the air quality in {$city} is Moderate 🙂 (AQI: {$aqi}). It's generally okay.");
         } elseif ($aqi <= 150) {
             return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['unhealthy_sensitive'] ?? "the air quality in {$city} is Unhealthy for Sensitive Groups 😷 (AQI: {$aqi}). Be careful if you have breathing issues.");
         } elseif ($aqi <= 200) {
@@ -242,6 +242,57 @@ class AQIController extends Controller
         } else {
             return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['hazardous'] ?? "the air quality in {$city} is Hazardous ☠️ (AQI: {$aqi}). Stay safe and avoid going outside.");
         }
+    }
+
+    /**
+     * Get WhatsApp message for a specific city and AQI range
+     */
+    private function getWhatsappMessage($aqi, $cityName)
+    {
+        if (is_null($aqi) || $aqi === 'Error') {
+            return null;
+        }
+
+        // Determine the range based on AQI
+        $range = null;
+        if ($aqi <= 50) {
+            $range = 'good';
+        } elseif ($aqi <= 100) {
+            $range = 'moderate';
+        } elseif ($aqi <= 150) {
+            $range = 'unhealthy_sensitive';
+        } elseif ($aqi <= 200) {
+            $range = 'unhealthy';
+        } elseif ($aqi <= 300) {
+            $range = 'very_unhealthy';
+        } else {
+            $range = 'hazardous';
+        }
+
+        // Try to get city-specific message first
+        $message = AQI::where('type', 'whatsapp')
+            ->where('city', $cityName)
+            ->where('range', $range)
+            ->value('message');
+
+        // If no city-specific message, use default
+        if (empty($message)) {
+            if ($aqi <= 50) {
+                $message = "the air quality in {$cityName} is Good 😊 (AQI: {$aqi}). Enjoy your day!";
+            } elseif ($aqi <= 100) {
+                $message = "the air quality in {$cityName} is Moderate 🙂 (AQI: {$aqi}). It's generally okay.";
+            } elseif ($aqi <= 150) {
+                $message = "the air quality in {$cityName} is Unhealthy for Sensitive Groups 😷 (AQI: {$aqi}). Be careful if you have breathing issues.";
+            } elseif ($aqi <= 200) {
+                $message = "the air quality in {$cityName} is Unhealthy ❌ (AQI: {$aqi}). Try to limit outdoor activity.";
+            } elseif ($aqi <= 300) {
+                $message = "the air quality in {$cityName} is Very Unhealthy ⚠️ (AQI: {$aqi}). Consider staying indoors.";
+            } else {
+                $message = "the air quality in {$cityName} is Hazardous ☠️ (AQI: {$aqi}). Stay safe and avoid going outside.";
+            }
+        }
+
+        return $message;
     }
 
     public function download()
@@ -273,11 +324,21 @@ class AQIController extends Controller
         ]);
     
         $type = $request->input('type'); // whatsapp or email
+        $city = $request->input('city'); // city name or null for global
+    
+        // Validate that city is provided for WhatsApp messages
+        if ($type === 'whatsapp' && empty($city)) {
+            return back()->with('error', 'Please select a city to save WhatsApp messages.');
+        }
     
         foreach ($data as $range => $message) {
             if (!empty($message)) {
                 AQI::updateOrCreate(
-                    ['range' => $range, 'type' => $type],
+                    [
+                        'range' => $range, 
+                        'type' => $type,
+                        'city' => $city
+                    ],
                     ['message' => $message]
                 );
             }
@@ -292,9 +353,45 @@ class AQIController extends Controller
         // ✅ Store the updated data back to session
         session(['aqi_results' => $results]);
     
+        $message = ucfirst($type) . ' messages saved successfully';
+        if ($city) {
+            $message .= ' for ' . $city;
+        }
+        $message .= ' and updated in the table!';
+    
         return back()
             ->with('results', $results)
-            ->with('success', ucfirst($type) . ' messages saved successfully and updated in the table!');
+            ->with('success', $message);
+    }
+
+    public function getCityMessages(Request $request)
+    {
+        $city = $request->input('city');
+        $type = $request->input('type', 'whatsapp');
+    
+        if (empty($city)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'City is required'
+            ], 400);
+        }
+    
+        $messages = AQI::where('type', $type)
+            ->where('city', $city)
+            ->pluck('message', 'range')
+            ->toArray();
+    
+        return response()->json([
+            'success' => true,
+            'messages' => [
+                'good' => $messages['good'] ?? '',
+                'moderate' => $messages['moderate'] ?? '',
+                'unhealthy_sensitive' => $messages['unhealthy_sensitive'] ?? '',
+                'unhealthy' => $messages['unhealthy'] ?? '',
+                'very_unhealthy' => $messages['very_unhealthy'] ?? '',
+                'hazardous' => $messages['hazardous'] ?? '',
+            ]
+        ]);
     }
     
     
@@ -444,9 +541,7 @@ class AQIController extends Controller
     public function sendWhatsapp()
     {
         $cities = City::select('name', 'aqi')->get();
-        $message = AQI::where('type', 'whatsapp')->get();
 
-        // dd($cities, $message);
         if ($cities->isEmpty()) {
             return back()->with('error', 'No records found to send WhatsApp messages.');
         }
@@ -454,25 +549,14 @@ class AQIController extends Controller
         foreach ($cities as $row) {
             if ($row['aqi'] != 'Error') {
                 $to = "923045039326"; // Or $row['phone'] if exists
-                if ($row['aqi'] <= 50) {
-                    $message = ($messages['good'] ?? "the air quality in {$row['name']} is Good 😊 (AQI: {$row['aqi']}). Enjoy your day!");
-                } elseif ($row['aqi'] <= 100) {
-                    $message = ($messages['moderate'] ?? "the air quality in {$row['name']} is Moderate 🙂 (AQI: {$row['aqi']}). It’s generally okay.");
-                } elseif ($row['aqi'] <= 150) {
-                    $message = ($messages['unhealthy_sensitive'] ?? "the air quality in {$row['name']} is Unhealthy for Sensitive Groups 😷 (AQI: {$row['aqi']}). Be careful if you have breathing issues.");
-                } elseif ($row['aqi'] <= 200) {
-                    $message = ($messages['unhealthy'] ?? "the air quality in {$row['name']} is Unhealthy ❌ (AQI: {$row['aqi']}). Try to limit outdoor activity.");
-                } elseif ($row['aqi'] <= 300) {
-                    $message = ($messages['very_unhealthy'] ?? "the air quality in {$row['name']} is Very Unhealthy ⚠️ (AQI: {$row['aqi']}). Consider staying indoors.");
-                } else {
-                    $message = ($messages['hazardous'] ?? "the air quality in {$row['name']} is Hazardous ☠️ (AQI: {$row['aqi']}). Stay safe and avoid going outside.");
+                $message = $this->getWhatsappMessage($row['aqi'], $row['name']);
+                
+                if ($message) {
+                    dispatch(new SendWhatsappMessageJob($to, $row['name'], $row['aqi'], $message));
                 }
-                // dump( $row['name'], $row['aqi'], $message);
-                dispatch(new SendWhatsappMessageJob($to, $row['name'], $row['aqi'], $message));
             }
         }
 
-        // dd('fasdfsa');
         return back()->with('success', 'WhatsApp messages are being sent in background.');
     }
 

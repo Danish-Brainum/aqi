@@ -35,33 +35,24 @@ class WhatsappMessageCommand extends Command
 
         try {
             $cities = City::select('name', 'aqi')->get();
-            $message = AQI::where('type', 'whatsapp')->get();
     
-            // dd($cities, $message);
             if ($cities->isEmpty()) {
-                return back()->with('error', 'No records found to send WhatsApp messages.');
+                Log::warning('No cities found to send WhatsApp messages.');
+                return;
             }
     
             $count = 0;
             foreach ($cities as $row) {
                 if ($row['aqi'] != 'Error') {
                     $to = "923045039326"; // Or $row['phone'] if exists
-                    if ($row['aqi'] <= 50) {
-                        $message = ($messages['good'] ?? "the air quality in {$row['name']} is Good 😊 (AQI: {$row['aqi']}). Enjoy your day!");
-                    } elseif ($row['aqi'] <= 100) {
-                        $message = ($messages['moderate'] ?? "the air quality in {$row['name']} is Moderate 🙂 (AQI: {$row['aqi']}). It’s generally okay.");
-                    } elseif ($row['aqi'] <= 150) {
-                        $message = ($messages['unhealthy_sensitive'] ?? "the air quality in {$row['name']} is Unhealthy for Sensitive Groups 😷 (AQI: {$row['aqi']}). Be careful if you have breathing issues.");
-                    } elseif ($row['aqi'] <= 200) {
-                        $message = ($messages['unhealthy'] ?? "the air quality in {$row['name']} is Unhealthy ❌ (AQI: {$row['aqi']}). Try to limit outdoor activity.");
-                    } elseif ($row['aqi'] <= 300) {
-                        $message = ($messages['very_unhealthy'] ?? "the air quality in {$row['name']} is Very Unhealthy ⚠️ (AQI: {$row['aqi']}). Consider staying indoors.");
-                    } else {
-                        $message = ($messages['hazardous'] ?? "the air quality in {$row['name']} is Hazardous ☠️ (AQI: {$row['aqi']}). Stay safe and avoid going outside.");
+                    
+                    // Get city-specific message
+                    $message = $this->getWhatsappMessage($row['aqi'], $row['name']);
+                    
+                    if ($message) {
+                        dispatch(new SendWhatsappMessageJob($to, $row['name'], $row['aqi'], $message));
+                        $count++;
                     }
-                    // dump( $row['name'], $row['aqi'], $message);
-                    dispatch(new SendWhatsappMessageJob($to, $row['name'], $row['aqi'], $message));
-                    $count++;
                 }
             }
 
@@ -72,5 +63,56 @@ class WhatsappMessageCommand extends Command
         }
 
         Log::info('🏁 [Whatsapp Cron End] AQI Message Scheduler finished at ' . now()->toDateTimeString());
+    }
+
+    /**
+     * Get WhatsApp message for a specific city and AQI range
+     */
+    private function getWhatsappMessage($aqi, $cityName)
+    {
+        if (is_null($aqi) || $aqi === 'Error') {
+            return null;
+        }
+
+        // Determine the range based on AQI
+        $range = null;
+        if ($aqi <= 50) {
+            $range = 'good';
+        } elseif ($aqi <= 100) {
+            $range = 'moderate';
+        } elseif ($aqi <= 150) {
+            $range = 'unhealthy_sensitive';
+        } elseif ($aqi <= 200) {
+            $range = 'unhealthy';
+        } elseif ($aqi <= 300) {
+            $range = 'very_unhealthy';
+        } else {
+            $range = 'hazardous';
+        }
+
+        // Try to get city-specific message first
+        $message = AQI::where('type', 'whatsapp')
+            ->where('city', $cityName)
+            ->where('range', $range)
+            ->value('message');
+
+        // If no city-specific message, use default
+        if (empty($message)) {
+            if ($aqi <= 50) {
+                $message = "the air quality in {$cityName} is Good 😊 (AQI: {$aqi}). Enjoy your day!";
+            } elseif ($aqi <= 100) {
+                $message = "the air quality in {$cityName} is Moderate 🙂 (AQI: {$aqi}). It's generally okay.";
+            } elseif ($aqi <= 150) {
+                $message = "the air quality in {$cityName} is Unhealthy for Sensitive Groups 😷 (AQI: {$aqi}). Be careful if you have breathing issues.";
+            } elseif ($aqi <= 200) {
+                $message = "the air quality in {$cityName} is Unhealthy ❌ (AQI: {$aqi}). Try to limit outdoor activity.";
+            } elseif ($aqi <= 300) {
+                $message = "the air quality in {$cityName} is Very Unhealthy ⚠️ (AQI: {$aqi}). Consider staying indoors.";
+            } else {
+                $message = "the air quality in {$cityName} is Hazardous ☠️ (AQI: {$aqi}). Stay safe and avoid going outside.";
+            }
+        }
+
+        return $message;
     }
 }

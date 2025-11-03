@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class AQI extends Model
 {
-    protected $fillable = ['range', 'message', 'type'];
+    protected $fillable = ['range', 'message', 'type', 'city'];
  }

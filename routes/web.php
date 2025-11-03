@@ -13,6 +13,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/upload', [AQIController::class, 'upload'])->name('upload');
     Route::get('/download', [AQIController::class, 'download'])->name('download');
     Route::post('/save_messages', [AQIController::class, 'saveMessages'])->name('save_messages');
+    Route::get('/get-city-messages', [AQIController::class, 'getCityMessages'])->name('get_city_messages');
     Route::post('/records/update', [AQIController::class, 'update'])->name('records.update');
     Route::post('/records/delete', [AQIController::class, 'delete'])->name('records.delete');
     Route::get('/deleted-table', [AQIController::class, 'deletedTable'])->name('deleted.table');
