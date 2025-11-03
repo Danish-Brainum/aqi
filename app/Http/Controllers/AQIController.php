@@ -249,7 +249,15 @@ class AQIController extends Controller
      */
     private function getWhatsappMessage($aqi, $cityName)
     {
-        if (is_null($aqi) || $aqi === 'Error') {
+        // Check if AQI is null, empty, or 'Error'
+        if (is_null($aqi) || $aqi === 'Error' || $aqi === '') {
+            return null;
+        }
+
+        // Ensure AQI is numeric for comparison
+        $aqi = is_numeric($aqi) ? (int) $aqi : null;
+        
+        if (is_null($aqi)) {
             return null;
         }
 
@@ -547,12 +555,17 @@ class AQIController extends Controller
         }
 
         foreach ($cities as $row) {
-            if ($row['aqi'] != 'Error') {
-                $to = "923045039326"; // Or $row['phone'] if exists
-                $message = $this->getWhatsappMessage($row['aqi'], $row['name']);
+            // Access as object property, not array
+            $aqi = $row->aqi;
+            $cityName = $row->name;
+            
+            // Check if AQI is valid (not null, not 'Error', and numeric)
+            if ($aqi !== null && $aqi !== 'Error' && is_numeric($aqi)) {
+                $to = "923045039326"; // Or phone number if exists
+                $message = $this->getWhatsappMessage($aqi, $cityName);
                 
                 if ($message) {
-                    dispatch(new SendWhatsappMessageJob($to, $row['name'], $row['aqi'], $message));
+                    dispatch(new SendWhatsappMessageJob($to, $cityName, $aqi, $message));
                 }
             }
         }
