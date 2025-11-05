@@ -90,6 +90,13 @@ class AQIController extends Controller
 
     public function status()
     {
+        // Fix: Update status for cities that have AQI but wrong status
+        // This ensures cities with valid AQI values show as "done" in the frontend
+        City::whereNotNull('aqi')
+            ->where('aqi', '>', 0)
+            ->whereIn('status', ['error', 'pending'])
+            ->update(['status' => 'done']);
+        
         // return raw JSON instead of view
         return response()->json(
             City::select('id', 'name', 'state', 'aqi', 'status')->get()
