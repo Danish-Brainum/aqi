@@ -129,7 +129,7 @@ export function initStatusTable() {
             })
             .then(data => {
                 if (data.success) {
-                    showAlert(data.message || "🔄 Updating AQI values...", "success");
+                    showAlert(data.message || "✅ Started updating AQI values. The table will update automatically as data is fetched.", "success");
                     // Immediate refresh
                     loadCities();
                     
@@ -138,7 +138,7 @@ export function initStatusTable() {
                         intervalId = setInterval(loadCities, 2000);
                     }
                 } else {
-                    showAlert(data.message || "Failed to start update process.", "error");
+                    showAlert(data.message || "❌ Failed to start update process. Please try again.", "error");
                 }
             })
             .catch(err => {

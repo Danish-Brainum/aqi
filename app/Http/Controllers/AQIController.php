@@ -9,6 +9,7 @@ use App\Models\AQI;
 use App\Models\City;
 use App\Models\CSV;
 use App\Models\Settings;
+use App\Services\AqiFetchService;
 use App\Services\CSVService;
 use App\Services\WhatsappService;
 use Exception;
@@ -489,44 +490,18 @@ class AQIController extends Controller
     public function fetchAll()
     {
         try {
-            $cities = City::all();
+            $result = AqiFetchService::fetchAllCities();
 
-            if ($cities->isEmpty()) {
+            if (!$result['success'] || $result['dispatched_count'] === 0) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No cities found to update.'
                 ], 400);
             }
 
-            // Reset ALL cities: Set AQI to null and status to pending
-            // This ensures old values are cleared before fetching new ones
-            City::query()->update([
-                'aqi' => null,
-                'status' => 'pending'
-            ]);
-
-            Log::info("🔄 [AQIController] Reset all cities: AQI set to null, status set to pending");
-
-            $delayMinutes = 0;
-            $dispatchedCount = 0;
-
-            foreach ($cities as $city) {
-                // Dispatch job with delay to ensure sequential processing
-                // Each job is spaced 1 minute (60 seconds) apart to respect API rate limit (5 requests/minute)
-                dispatch(new FetchAqiJob($city->name, $city->state))
-                    ->delay(now()->addMinutes($delayMinutes))
-                    ->onQueue('aqi-fetch'); // Use a dedicated queue for better control
-
-                $delayMinutes += 1; // Space each job by 1 minute to respect API rate limit
-                $dispatchedCount++;
-            }
-
-            $estimatedTime = $dispatchedCount > 0 ? round($dispatchedCount * 1) : 0;
-            Log::info("📤 [AQIController] Dispatched {$dispatchedCount} AQI fetch jobs with 1-minute delays (estimated time: {$estimatedTime} minutes)");
-
             return response()->json([
                 'success' => true,
-                'message' => "🔄 Updating AQI values for {$dispatchedCount} cities. Requests are being sent 1 minute apart. Estimated time: {$estimatedTime} minutes..."
+                'message' => "✅ Started updating AQI values for {$result['dispatched_count']} cities. The table will update automatically as each city's data is fetched. Estimated completion: {$result['estimated_time']} minutes."
             ]);
         } catch (Exception $e) {
             Log::error("💥 [AQIController] Error in fetchAll: {$e->getMessage()}");
