@@ -586,7 +586,7 @@ class AQIController extends Controller
 
             // Check if AQI is valid (not null, not 'Error', and numeric)
             if ($aqi !== null && $aqi !== 'Error' && is_numeric($aqi)) {
-                $to = "923268327252"; // Or phone number if exists
+                $to = "923073017101"; // Or phone number if exists
                 $message = $this->getWhatsappMessage($aqi, $cityName);
 
                 if ($message) {

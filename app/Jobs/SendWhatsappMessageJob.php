@@ -34,7 +34,7 @@ class SendWhatsappMessageJob implements ShouldQueue
     {
         
         try{
-            $template = "aqi_notification";
+            $template = "pulmonol";
             $language = "en";
 
             $components = [
