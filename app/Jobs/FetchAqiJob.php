@@ -142,13 +142,16 @@ class FetchAqiJob implements ShouldQueue
                 }
             }
 
+            // Update both AQI and status together in a single database operation
+            // This ensures they are set atomically - frontend only shows AQI when status is "done"
             if ($aqi !== null && $aqi > 0) {
+                // Update both AQI value AND status together
                 $city->update([
                     'aqi' => $aqi,
                     'status' => 'done',
                 ]);
 
-                Log::info("✅ [FetchAqiJob] AQI for {$this->cityName}: {$aqi}");
+                Log::info("✅ [FetchAqiJob] Successfully updated AQI for {$this->cityName}: {$aqi} (status: done)");
             } else {
                 // Log the full response structure for debugging
                 Log::warning("⚠️ [FetchAqiJob] AQI data not found for {$this->cityName}. Response structure: " . json_encode($data));
@@ -158,7 +161,13 @@ class FetchAqiJob implements ShouldQueue
                     Log::warning("⚠️ [FetchAqiJob] API returned success but no data for {$this->cityName}");
                 }
                 
-                $city->update(['status' => 'error', 'aqi' => null]);
+                // Set both status and AQI together (AQI remains null)
+                $city->update([
+                    'status' => 'error',
+                    'aqi' => null
+                ]);
+                
+                Log::warning("❌ [FetchAqiJob] Marked {$this->cityName} as error (no valid AQI received)");
             }
         } catch (Exception $e) {
             Log::error("💥 [FetchAqiJob] Exception for {$this->cityName}: {$e->getMessage()}");

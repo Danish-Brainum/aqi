@@ -29,26 +29,31 @@ export function initStatusTable() {
         cities.forEach(city => {
             let aqiCell = "";
             
-            // Check if AQI value exists (regardless of status)
-            const hasValidAqi = city.aqi !== null && city.aqi !== undefined && city.aqi !== '';
-            const aqiValue = hasValidAqi ? parseInt(city.aqi) : null;
-            const isValidAqi = aqiValue !== null && !isNaN(aqiValue) && aqiValue > 0;
-            
+            // Only show AQI value when status is "done" - this ensures we only show
+            // values that were successfully fetched and saved together with status
             if (city.status === "processing") {
-                // Always show spinner when processing
+                // Show spinner when processing
                 aqiCell = `<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent"></span>`;
-            } else if (isValidAqi) {
-                // If AQI value exists and is valid, show it (regardless of status)
-                const color =
-                    aqiValue <= 50 ? "bg-green-100 text-green-700" :
-                    aqiValue <= 100 ? "bg-yellow-100 text-yellow-700" :
-                    "bg-red-100 text-red-700";
-                aqiCell = `<span class="rounded-full px-2 py-1 text-xs font-semibold ${color}">${aqiValue}</span>`;
+            } else if (city.status === "done") {
+                // Only show AQI when status is "done" - both must be set together
+                const hasValidAqi = city.aqi !== null && city.aqi !== undefined && city.aqi !== '';
+                const aqiValue = hasValidAqi ? parseInt(city.aqi) : null;
+                
+                if (aqiValue !== null && !isNaN(aqiValue) && aqiValue > 0) {
+                    const color =
+                        aqiValue <= 50 ? "bg-green-100 text-green-700" :
+                        aqiValue <= 100 ? "bg-yellow-100 text-yellow-700" :
+                        "bg-red-100 text-red-700";
+                    aqiCell = `<span class="rounded-full px-2 py-1 text-xs font-semibold ${color}">${aqiValue}</span>`;
+                } else {
+                    // Status is done but AQI is invalid - shouldn't happen, but handle it
+                    aqiCell = `<span class="text-red-600">Invalid</span>`;
+                }
             } else if (city.status === "pending") {
-                // No valid AQI and status is pending
+                // Status is pending - show dash (AQI was reset to null)
                 aqiCell = `<span class="text-slate-500">-</span>`;
             } else {
-                // Error status or done but no valid AQI value
+                // Status is error - show error
                 aqiCell = `<span class="text-red-600">Error</span>`;
             }
 

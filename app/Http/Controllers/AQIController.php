@@ -90,14 +90,7 @@ class AQIController extends Controller
 
     public function status()
     {
-        // Fix: Update status for cities that have AQI but wrong status
-        // This ensures cities with valid AQI values show as "done" in the frontend
-        City::whereNotNull('aqi')
-            ->where('aqi', '>', 0)
-            ->whereIn('status', ['error', 'pending'])
-            ->update(['status' => 'done']);
-        
-        // return raw JSON instead of view
+        // return raw JSON - no auto-fix needed since we now ensure AQI and status are set together
         return response()->json(
             City::select('id', 'name', 'state', 'aqi', 'status')->get()
         );
@@ -505,13 +498,19 @@ class AQIController extends Controller
                 ], 400);
             }
 
+            // Reset ALL cities: Set AQI to null and status to pending
+            // This ensures old values are cleared before fetching new ones
+            City::query()->update([
+                'aqi' => null,
+                'status' => 'pending'
+            ]);
+
+            Log::info("🔄 [AQIController] Reset all cities: AQI set to null, status set to pending");
+
             $delaySeconds = 0;
             $dispatchedCount = 0;
 
             foreach ($cities as $city) {
-                // Reset status to pending before dispatching
-                $city->update(['status' => 'pending']);
-
                 // Dispatch job with delay to ensure sequential processing
                 dispatch(new FetchAqiJob($city->name, $city->state))
                     ->delay(now()->addSeconds($delaySeconds))
