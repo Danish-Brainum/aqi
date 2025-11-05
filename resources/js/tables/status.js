@@ -28,21 +28,31 @@ export function initStatusTable() {
         tableBody.innerHTML = "";
         cities.forEach(city => {
             let aqiCell = "";
-            if (city.status === "pending") aqiCell = `<span class="text-slate-500">-</span>`;
-            else if (city.status === "processing") aqiCell = `<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent"></span>`;
-            else if (city.status === "done") {
-                const color =
-                    city.aqi <= 50 ? "bg-green-100 text-green-700" :
-                    city.aqi <= 100 ? "bg-yellow-100 text-yellow-700" :
-                    "bg-red-100 text-red-700";
-                aqiCell = `<span class="rounded-full px-2 py-1 text-xs font-semibold ${color}">${city.aqi}</span>`;
-            } else aqiCell = `<span class="text-red-600">Error</span>`;
+            if (city.status === "pending") {
+                aqiCell = `<span class="text-slate-500">-</span>`;
+            } else if (city.status === "processing") {
+                aqiCell = `<span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent"></span>`;
+            } else if (city.status === "done" && city.aqi !== null && city.aqi !== undefined) {
+                const aqiValue = parseInt(city.aqi);
+                if (!isNaN(aqiValue) && aqiValue > 0) {
+                    const color =
+                        aqiValue <= 50 ? "bg-green-100 text-green-700" :
+                        aqiValue <= 100 ? "bg-yellow-100 text-yellow-700" :
+                        "bg-red-100 text-red-700";
+                    aqiCell = `<span class="rounded-full px-2 py-1 text-xs font-semibold ${color}">${aqiValue}</span>`;
+                } else {
+                    aqiCell = `<span class="text-red-600">Invalid</span>`;
+                }
+            } else {
+                // Error status or done but no AQI value
+                aqiCell = `<span class="text-red-600">Error</span>`;
+            }
 
             tableBody.insertAdjacentHTML("beforeend", `
                 <tr class="hover:bg-indigo-50/40" data-id="${city.id}">
                     <td class="px-4 py-2 text-sm">${city.id}</td>
                     <td class="px-4 py-2 text-sm">${city.name}</td>
-                    <td class="px-4 py-2 text-sm">${city.state}</td>
+                    <td class="px-4 py-2 text-sm">${city.state || '-'}</td>
                     <td class="px-4 py-2 text-sm">${aqiCell}</td>
                     <td class="px-4 py-2 text-sm capitalize">${city.status}</td>
                 </tr>
@@ -59,17 +69,21 @@ export function initStatusTable() {
                 return res.json();
             })
             .then(data => {
-                renderRows(data);
-                
-                // Check if any cities are still processing
-                const stillProcessing = data.some(city => 
-                    city.status === "processing" || city.status === "pending"
-                );
-                
-                // Stop interval if all cities are done
-                if (!stillProcessing && intervalId) {
-                    clearInterval(intervalId);
-                    intervalId = null;
+                if (Array.isArray(data)) {
+                    renderRows(data);
+                    
+                    // Check if any cities are still processing
+                    const stillProcessing = data.some(city => 
+                        city.status === "processing" || city.status === "pending"
+                    );
+                    
+                    // Stop interval if all cities are done
+                    if (!stillProcessing && intervalId) {
+                        clearInterval(intervalId);
+                        intervalId = null;
+                        // Show completion message
+                        showAlert("✅ All cities updated successfully!", "success");
+                    }
                 }
             })
             .catch(err => {
@@ -106,12 +120,13 @@ export function initStatusTable() {
             })
             .then(data => {
                 if (data.success) {
-                    showAlert(data.message || "Cities are updating successfully.", "success");
-                    loadCities(); // Immediate refresh
+                    showAlert(data.message || "🔄 Updating AQI values...", "success");
+                    // Immediate refresh
+                    loadCities();
                     
-                    // Start polling every 5 seconds
+                    // Start polling every 2 seconds for faster updates
                     if (!intervalId) {
-                        intervalId = setInterval(loadCities, 5000);
+                        intervalId = setInterval(loadCities, 2000);
                     }
                 } else {
                     showAlert(data.message || "Failed to start update process.", "error");

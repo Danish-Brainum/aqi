@@ -518,7 +518,7 @@ class AQIController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Successfully queued {$dispatchedCount} cities for AQI update. Processing will start shortly."
+                'message' => "🔄 Updating AQI values for {$dispatchedCount} cities. Please wait while we fetch the latest data..."
             ]);
         } catch (Exception $e) {
             Log::error("💥 [AQIController] Error in fetchAll: {$e->getMessage()}");

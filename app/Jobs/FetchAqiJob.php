@@ -87,35 +87,62 @@ class FetchAqiJob implements ShouldQueue
                 return;
             }
 
+            // Check if request failed
             if ($response->failed()) {
                 $errorBody = $response->body();
-                Log::error("❌ [FetchAqiJob] API request failed for {$this->cityName}: Status {$response->status()} - {$errorBody}");
+                $statusCode = $response->status();
+                Log::error("❌ [FetchAqiJob] API request failed for {$this->cityName}: Status {$statusCode} - {$errorBody}");
                 
                 // Check if it's an API error that shouldn't retry
-                if ($response->status() === 400 || $response->status() === 404) {
+                if ($statusCode === 400 || $statusCode === 404) {
                     // Bad request or not found - don't retry
-                    $city->update(['status' => 'error']);
+                    $city->update(['status' => 'error', 'aqi' => null]);
                     return;
                 }
                 
                 // Other errors - mark as pending to retry later
                 $city->update(['status' => 'pending']);
-                throw new Exception("API request failed: {$errorBody}");
+                throw new Exception("API request failed: Status {$statusCode} - {$errorBody}");
             }
 
+            // Parse response
             $data = $response->json();
+            
+            // Log full response for debugging if needed
+            if (!isset($data['status']) || $data['status'] !== 'success') {
+                Log::warning("⚠️ [FetchAqiJob] Unexpected API response for {$this->cityName}: " . json_encode($data));
+            }
 
             // Check for API errors in response
             if (isset($data['status']) && $data['status'] === 'fail') {
-                $errorMsg = $data['data']['message'] ?? 'Unknown API error';
+                $errorMsg = $data['data']['message'] ?? ($data['data']['error'] ?? 'Unknown API error');
                 Log::error("❌ [FetchAqiJob] API returned error for {$this->cityName}: {$errorMsg}");
-                $city->update(['status' => 'error']);
+                $city->update(['status' => 'error', 'aqi' => null]);
                 return;
             }
 
+            // Extract AQI value - check multiple possible response structures
+            $aqi = null;
+            
+            // Standard structure: data.current.pollution.aqius
             if (isset($data['data']['current']['pollution']['aqius'])) {
                 $aqi = (int) $data['data']['current']['pollution']['aqius'];
+            }
+            // Alternative structure: data.current.pollution.aqi
+            elseif (isset($data['data']['current']['pollution']['aqi'])) {
+                $aqi = (int) $data['data']['current']['pollution']['aqi'];
+            }
+            // Check if pollution data exists but aqius is missing
+            elseif (isset($data['data']['current']['pollution'])) {
+                $pollution = $data['data']['current']['pollution'];
+                if (isset($pollution['aqius'])) {
+                    $aqi = (int) $pollution['aqius'];
+                } elseif (isset($pollution['aqi'])) {
+                    $aqi = (int) $pollution['aqi'];
+                }
+            }
 
+            if ($aqi !== null && $aqi > 0) {
                 $city->update([
                     'aqi' => $aqi,
                     'status' => 'done',
@@ -123,8 +150,15 @@ class FetchAqiJob implements ShouldQueue
 
                 Log::info("✅ [FetchAqiJob] AQI for {$this->cityName}: {$aqi}");
             } else {
-                Log::warning("⚠️ [FetchAqiJob] AQI data not found for {$this->cityName}. Response: " . json_encode($data));
-                $city->update(['status' => 'error']);
+                // Log the full response structure for debugging
+                Log::warning("⚠️ [FetchAqiJob] AQI data not found for {$this->cityName}. Response structure: " . json_encode($data));
+                
+                // Check if response indicates success but no data
+                if (isset($data['status']) && $data['status'] === 'success' && empty($data['data'])) {
+                    Log::warning("⚠️ [FetchAqiJob] API returned success but no data for {$this->cityName}");
+                }
+                
+                $city->update(['status' => 'error', 'aqi' => null]);
             }
         } catch (Exception $e) {
             Log::error("💥 [FetchAqiJob] Exception for {$this->cityName}: {$e->getMessage()}");
@@ -137,10 +171,12 @@ class FetchAqiJob implements ShouldQueue
             if ($city) {
                 // Only mark as error if we've exhausted retries
                 if ($this->attempts() >= $this->tries) {
-                    $city->update(['status' => 'error']);
+                    $city->update(['status' => 'error', 'aqi' => null]);
+                    Log::error("💥 [FetchAqiJob] Max retries reached for {$this->cityName}. Marking as error.");
                 } else {
                     // Otherwise, mark as pending for retry
                     $city->update(['status' => 'pending']);
+                    Log::info("🔄 [FetchAqiJob] Retrying {$this->cityName} (Attempt {$this->attempts()}/{$this->tries})");
                 }
             }
             
@@ -166,7 +202,8 @@ class FetchAqiJob implements ShouldQueue
                     ->first();
 
         if ($city) {
-            $city->update(['status' => 'error']);
+            $city->update(['status' => 'error', 'aqi' => null]);
+            Log::error("💥 [FetchAqiJob] Job failed permanently for {$this->cityName}, {$this->state}");
         }
     }
 }
