@@ -25,36 +25,56 @@ try {
     $settings = Settings::first();
 
     // Fallback defaults if settings missing
-    $morning = $settings && $settings->morning_time
-        ? Carbon::parse($settings->morning_time)->format('H:i')
-        : '09:00';
+    $morningTime = $settings && $settings->morning_time
+        ? Carbon::parse($settings->morning_time)
+        : Carbon::parse('09:00');
 
-    $evening = $settings && $settings->evening_time
-        ? Carbon::parse($settings->evening_time)->format('H:i')
-        : '18:00';
+    $eveningTime = $settings && $settings->evening_time
+        ? Carbon::parse($settings->evening_time)
+        : Carbon::parse('18:00');
+
+    // Calculate times 2 hours before morning and evening
+    $morningUpdateTime = $morningTime->copy()->subHours(2)->format('H:i');
+    $eveningUpdateTime = $eveningTime->copy()->subHours(2)->format('H:i');
+
+    // Schedule AQI fetch 2 hours before morning time
+    Schedule::command('aqi:fetch-all')
+        ->dailyAt($morningUpdateTime)
+        ->withoutOverlapping()
+        ->appendOutputTo(storage_path('logs/aqi_fetch.log'))
+        ->runInBackground();
+
+    // Schedule AQI fetch 2 hours before evening time
+    Schedule::command('aqi:fetch-all')
+        ->dailyAt($eveningUpdateTime)
+        ->withoutOverlapping()
+        ->appendOutputTo(storage_path('logs/aqi_fetch.log'))
+        ->runInBackground();
+
+    Log::info("📅 [Scheduler] AQI updates scheduled: Morning at {$morningUpdateTime} (2 hours before {$morningTime->format('H:i')}), Evening at {$eveningUpdateTime} (2 hours before {$eveningTime->format('H:i')})");
 
     // Schedule: both commands in morning
     Schedule::command('app:email-message')
-        ->dailyAt($morning)
+        ->dailyAt($morningTime->format('H:i'))
         ->withoutOverlapping()
         ->appendOutputTo(storage_path('logs/email_message.log'))
         ->runInBackground();
 
     Schedule::command('app:whatsapp-message')
-        ->dailyAt($morning)
+        ->dailyAt($morningTime->format('H:i'))
         ->withoutOverlapping()
-             ->appendOutputTo(storage_path('logs/whatsapp_message.log'))
+        ->appendOutputTo(storage_path('logs/whatsapp_message.log'))
         ->runInBackground();
 
     // Schedule: both commands in evening
     Schedule::command('app:email-message')
-        ->dailyAt($evening)
+        ->dailyAt($eveningTime->format('H:i'))
         ->withoutOverlapping()
         ->appendOutputTo(storage_path('logs/email_message.log'))
         ->runInBackground();
 
     Schedule::command('app:whatsapp-message')
-        ->dailyAt($evening)
+        ->dailyAt($eveningTime->format('H:i'))
         ->withoutOverlapping()
         ->appendOutputTo(storage_path('logs/whatsapp_message.log'))
         ->runInBackground();
