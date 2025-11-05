@@ -507,24 +507,26 @@ class AQIController extends Controller
 
             Log::info("🔄 [AQIController] Reset all cities: AQI set to null, status set to pending");
 
-            $delaySeconds = 0;
+            $delayMinutes = 0;
             $dispatchedCount = 0;
 
             foreach ($cities as $city) {
                 // Dispatch job with delay to ensure sequential processing
+                // Each job is spaced 1 minute (60 seconds) apart to respect API rate limit (5 requests/minute)
                 dispatch(new FetchAqiJob($city->name, $city->state))
-                    ->delay(now()->addSeconds($delaySeconds))
+                    ->delay(now()->addMinutes($delayMinutes))
                     ->onQueue('aqi-fetch'); // Use a dedicated queue for better control
 
-                $delaySeconds += 12; // Space each job by 12 seconds to respect API rate limit
+                $delayMinutes += 1; // Space each job by 1 minute to respect API rate limit
                 $dispatchedCount++;
             }
 
-            Log::info("📤 [AQIController] Dispatched {$dispatchedCount} AQI fetch jobs with sequential delays");
+            $estimatedTime = $dispatchedCount > 0 ? round($dispatchedCount * 1) : 0;
+            Log::info("📤 [AQIController] Dispatched {$dispatchedCount} AQI fetch jobs with 1-minute delays (estimated time: {$estimatedTime} minutes)");
 
             return response()->json([
                 'success' => true,
-                'message' => "🔄 Updating AQI values for {$dispatchedCount} cities. Please wait while we fetch the latest data..."
+                'message' => "🔄 Updating AQI values for {$dispatchedCount} cities. Requests are being sent 1 minute apart. Estimated time: {$estimatedTime} minutes..."
             ]);
         } catch (Exception $e) {
             Log::error("💥 [AQIController] Error in fetchAll: {$e->getMessage()}");
