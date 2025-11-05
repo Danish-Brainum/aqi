@@ -30,7 +30,7 @@ class AQIController extends Controller
     {
         // If session has results, use them, else load from DB
         $results = session('aqi_results', []);
-    
+
         if (empty($results)) {
             // ✅ fetch from DB if session is empty
             $results = CSV::all()->map(function ($row) {
@@ -47,7 +47,7 @@ class AQIController extends Controller
         }
 
         session()->put('aqi_results', $results);
-    
+
         // paginate results
         $perPage = $request->query('perPage', 10);
         $page = Paginator::resolveCurrentPage('page');
@@ -58,7 +58,7 @@ class AQIController extends Controller
             $page,
             ['path' => Paginator::resolveCurrentPath()]
         );
-    
+
         // paginate deleted_results
         $deleted = session('deleted_results', []);
         $deletedPage = Paginator::resolveCurrentPage('deleted_page');
@@ -69,13 +69,13 @@ class AQIController extends Controller
             $deletedPage,
             ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'deleted_page']
         );
-    
+
         // ✅ get cities for aqi_info tab
         $cities = City::select('id', 'name', 'aqi', 'status')->get();
         $email_messages = AQI::where('type', 'email')->pluck('message', 'range')->toArray();
         $whatsapp_messages = AQI::where('type', 'whatsapp')->pluck('message', 'range')->toArray();
         $settings = Settings::first();
-    
+
         return view('dashboard', [
             'results' => $paginatedResults,
             'deleted_results' => $paginatedDeleted,
@@ -85,8 +85,8 @@ class AQIController extends Controller
             'settings' => $settings
         ]);
     }
-    
-    
+
+
 
     public function status()
     {
@@ -104,11 +104,11 @@ class AQIController extends Controller
             $request->validate([
                 'csv' => 'required|mimes:csv,txt',
             ]);
-    
+
             try {
                 $csv = Reader::createFromPath($request->file('csv')->getRealPath(), 'r');
                 $csv->setHeaderOffset(0);
-    
+
                 // Validate headers
                 $headers = array_map('strtolower', (array) $csv->getHeader());
                 $required = ['name', 'email', 'city', 'phone'];
@@ -117,7 +117,7 @@ class AQIController extends Controller
                     $details = 'Missing required header(s): ' . implode(', ', $missing) . '. Expected headers: Name, Email, City, Phone';
                     return back()->with('error', 'Invalid CSV headers.')->with('error_details', $details);
                 }
-    
+
                 $records = $csv->getRecords();
                 $output = [];
                 foreach ($records as $i => $record) {
@@ -131,12 +131,12 @@ class AQIController extends Controller
                     );
                     $output;
                 }
-    
+
                 if (empty($output)) {
                     return back()->with('error', 'The CSV appears to be empty.')
                                  ->with('error_details', 'Add at least one row under the headers: Name, Email, City, Phone');
                 }
-    
+
                 session(['aqi_results' => $output]);
                 return back()->with('results', $output)->with('success', 'CSV processed successfully.');
             } catch (\Throwable $e) {
@@ -144,10 +144,10 @@ class AQIController extends Controller
                              ->with('error_details', $e->getMessage());
             }
         }
-    
+
         return back()->with('error', 'Please upload a CSV file or provide Name, Email, City, and Phone.');
     }
-    
+
     public function addManualRecord(Request $request) {
         $name  = $request->input('name');
         $email = $request->input('email');
@@ -188,7 +188,7 @@ class AQIController extends Controller
         $email = trim((string) $email);
         $city = trim((string) $city);
         $phone = trim((string) $phone);
-    
+
         if ($name === '' || $email === '' || $city === '' || $phone === '') {
             return [
                 'id'    => $id,
@@ -200,7 +200,7 @@ class AQIController extends Controller
                 'message' => "Missing value(s). Each row must include Name, Email, City, and Phone.",
             ];
         }
-    
+
         try {
         $aqi = City::where('name', $city)->pluck("aqi")->first();
         $message = $this->getMessage($aqi, $name, $city);
@@ -256,7 +256,7 @@ class AQIController extends Controller
 
         // Ensure AQI is numeric for comparison
         $aqi = is_numeric($aqi) ? (int) $aqi : null;
-        
+
         if (is_null($aqi)) {
             return null;
         }
@@ -330,20 +330,20 @@ class AQIController extends Controller
             'very_unhealthy',
             'hazardous',
         ]);
-    
+
         $type = $request->input('type'); // whatsapp or email
         $city = $request->input('city'); // city name or null for global
-    
+
         // Validate that city is provided for WhatsApp messages
         if ($type === 'whatsapp' && empty($city)) {
             return back()->with('error', 'Please select a city to save WhatsApp messages.');
         }
-    
+
         foreach ($data as $range => $message) {
             if (!empty($message)) {
                 AQI::updateOrCreate(
                     [
-                        'range' => $range, 
+                        'range' => $range,
                         'type' => $type,
                         'city' => $city
                     ],
@@ -351,22 +351,22 @@ class AQIController extends Controller
                 );
             }
         }
-    
+
         // ✅ Refresh the existing session results with new messages
         $results = session('aqi_results', []);
         foreach ($results as $key => $row) {
             $results[$key]['message'] = $this->getMessage($row['aqi'], $row['name'], $row['city']);
         }
-    
+
         // ✅ Store the updated data back to session
         session(['aqi_results' => $results]);
-    
+
         $message = ucfirst($type) . ' messages saved successfully';
         if ($city) {
             $message .= ' for ' . $city;
         }
         $message .= ' and updated in the table!';
-    
+
         return back()
             ->with('results', $results)
             ->with('success', $message);
@@ -376,19 +376,19 @@ class AQIController extends Controller
     {
         $city = $request->input('city');
         $type = $request->input('type', 'whatsapp');
-    
+
         if (empty($city)) {
             return response()->json([
                 'success' => false,
                 'message' => 'City is required'
             ], 400);
         }
-    
+
         $messages = AQI::where('type', $type)
             ->where('city', $city)
             ->pluck('message', 'range')
             ->toArray();
-    
+
         return response()->json([
             'success' => true,
             'messages' => [
@@ -401,8 +401,8 @@ class AQIController extends Controller
             ]
         ]);
     }
-    
-    
+
+
     public function update(Request $request)
     {
         $id = $request->input('id');
@@ -433,10 +433,10 @@ class AQIController extends Controller
                 if (($row['id'] ?? null) == $id) {
                     // PREPEND deleted item into deleted_results
                     array_unshift($deleted, $row);
-    
+
                     // remove from active results (but not from DB)
                     unset($results[$key]);
-    
+
                     // update sessions
                     session(['aqi_results' => array_values($results)]);
                     session(['deleted_results' => $deleted]);
@@ -470,7 +470,7 @@ class AQIController extends Controller
         $deleted_results = session('deleted_results', []);
         $perPage = $request->query('perPage', 10);
         $page = Paginator::resolveCurrentPage('deleted_page');
-    
+
         $deleted_results = new LengthAwarePaginator(
             collect($deleted_results)->forPage($page, $perPage),
             count($deleted_results),
@@ -478,30 +478,55 @@ class AQIController extends Controller
             $page,
             ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'deleted_page']
         );
-    
+
         $html = view('partials.deleted-table', compact('deleted_results'))->render();
-    
+
         // ✅ Return JSON with `html` key
         return response()->json(['html' => $html]);
     }
-    
-    
+
+
     public function fetchAll()
     {
-        $cities = City::all();
-        $delaySeconds = 0;
-    
-        foreach ($cities as $city) {
-            // Immediately mark as processing so UI shows spinner right away
-            $city->update(['status' => 'processing']);
-    
-            dispatch(new FetchAqiJob($city->name, $city->state))
-                ->delay(now()->addSeconds($delaySeconds));
-    
-            $delaySeconds += 12; // space each job by 12 seconds
+        try {
+            $cities = City::all();
+
+            if ($cities->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No cities found to update.'
+                ], 400);
+            }
+
+            $delaySeconds = 0;
+            $dispatchedCount = 0;
+
+            foreach ($cities as $city) {
+                // Reset status to pending before dispatching
+                $city->update(['status' => 'pending']);
+
+                // Dispatch job with delay to ensure sequential processing
+                dispatch(new FetchAqiJob($city->name, $city->state))
+                    ->delay(now()->addSeconds($delaySeconds))
+                    ->onQueue('aqi-fetch'); // Use a dedicated queue for better control
+
+                $delaySeconds += 12; // Space each job by 12 seconds to respect API rate limit
+                $dispatchedCount++;
+            }
+
+            Log::info("📤 [AQIController] Dispatched {$dispatchedCount} AQI fetch jobs with sequential delays");
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully queued {$dispatchedCount} cities for AQI update. Processing will start shortly."
+            ]);
+        } catch (Exception $e) {
+            Log::error("💥 [AQIController] Error in fetchAll: {$e->getMessage()}");
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to queue cities for update. Please try again.'
+            ], 500);
         }
-    
-        return response()->json(['success' => 'Cities are updating successfully.']);
     }
 
 
@@ -558,12 +583,12 @@ class AQIController extends Controller
             // Access as object property, not array
             $aqi = $row->aqi;
             $cityName = $row->name;
-            
+
             // Check if AQI is valid (not null, not 'Error', and numeric)
             if ($aqi !== null && $aqi !== 'Error' && is_numeric($aqi)) {
-                $to = "923045039326"; // Or phone number if exists
+                $to = "923268327252"; // Or phone number if exists
                 $message = $this->getWhatsappMessage($aqi, $cityName);
-                
+
                 if ($message) {
                     dispatch(new SendWhatsappMessageJob($to, $cityName, $aqi, $message));
                 }
@@ -578,42 +603,42 @@ class AQIController extends Controller
         try {
             $results = session('aqi_results', []);
             $deleted = session('deleted_results', []);
-    
+
             // dd($deleted);
             // ✅ Step 1: Delete rows marked as deleted
             if (!empty($deleted)) {
                 $idsToDelete = collect($deleted)->pluck('id')->filter()->toArray();
                 if (!empty($idsToDelete)) {
                     CSV::whereIn('id', $idsToDelete)->delete();
-                    Log::info('Deleted records: ' . implode(',', $idsToDelete));                    
+                    Log::info('Deleted records: ' . implode(',', $idsToDelete));
                 }
             }
-            DB::beginTransaction(); 
-    
+            DB::beginTransaction();
+
             Log::info('Upserting CSV records...');
-    
-          
+
+
             CSV::upsert(
                 $results,
-                ['id'], 
+                ['id'],
                 ['name','email', 'city', 'phone', 'aqi', 'message']
             );
-             
-    
+
+
             DB::commit();
-    
+
             session(['aqi_results' => $results]);
             Log::info('CSV data saved successfully.');
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'All results stored successfully!'
             ]);
-    
+
         } catch (Exception $e) {
             DB::rollBack(); // ✅ rollback transaction on error
             Log::error("Error saving results: " . $e->getMessage());
-    
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error saving results.'

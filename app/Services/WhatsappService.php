@@ -42,7 +42,7 @@ class WhatsappService
     /**
      * Send a template message.
      *
-     * @param string $to phone number as string (e.g. 923045039326)
+     * @param string $to phone number as string (e.g. 9212345612)
      * @param string $templateName the EXACT approved template name
      * @param string $languageCode e.g. en_US
      * @param array $components components array per Meta specs (body parameters, header, etc.)
@@ -68,7 +68,7 @@ class WhatsappService
             ],
         ])
         ->post($this->base, $payload);
-    
+
         $json = $resp->json();
         Log::info('WhatsApp sendTemplate response', ['to' => $to, 'template' => $templateName, 'response' => $json]);
 

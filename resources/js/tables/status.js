@@ -1,9 +1,28 @@
 export function initStatusTable() {
     const fetchBtn = document.getElementById("fetchAll");
     const tableBody = document.getElementById("aqi-body");
-    if (!fetchBtn || !tableBody) return;
+    const alertContainer = document.getElementById("alert-container");
+    if (!fetchBtn || !tableBody || !alertContainer) return;
 
     let intervalId = null;
+    let isUpdating = false;
+
+    function showAlert(message, type = 'success') {
+        const bgColor = type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
+        const alertBox = `
+            <div class="mb-4 rounded-lg border ${bgColor} px-4 py-3 flex items-center justify-between">
+                <span>${message}</span>
+                <button onclick="this.parentElement.remove()" class="hover:opacity-75">✕</button>
+            </div>
+        `;
+        alertContainer.innerHTML = alertBox;
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            const alert = alertContainer.querySelector('.mb-4');
+            if (alert) alert.remove();
+        }, 5000);
+    }
 
     function renderRows(cities) {
         tableBody.innerHTML = "";
@@ -33,23 +52,79 @@ export function initStatusTable() {
 
     function loadCities() {
         fetch("/status")
-            .then(res => res.json())
-            .then(data => renderRows(data));
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                renderRows(data);
+                
+                // Check if any cities are still processing
+                const stillProcessing = data.some(city => 
+                    city.status === "processing" || city.status === "pending"
+                );
+                
+                // Stop interval if all cities are done
+                if (!stillProcessing && intervalId) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                }
+            })
+            .catch(err => {
+                console.error("Error loading cities:", err);
+                // Don't show error alert on every interval, only log
+            });
     }
 
     fetchBtn.addEventListener("click", () => {
+        // Prevent multiple simultaneous requests
+        if (isUpdating) {
+            showAlert("Update is already in progress. Please wait...", "error");
+            return;
+        }
+
+        isUpdating = true;
+        fetchBtn.disabled = true;
+        fetchBtn.textContent = "Updating...";
+        
+        // Clear any existing interval
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+
         fetch("/fetch-all")
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(err => {
+                        throw new Error(err.message || `HTTP error! status: ${res.status}`);
+                    });
+                }
+                return res.json();
+            })
             .then(data => {
-                const alertBox = `
-                    <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800 flex items-center justify-between">
-                        <span>${data.success}</span>
-                        <button onclick="this.parentElement.remove()" class="text-green-700 hover:text-green-900">✕</button>
-                    </div>
-                `;
-                document.getElementById("alert-container").innerHTML = alertBox;
-                loadCities();
-                if (!intervalId) intervalId = setInterval(loadCities, 5000);
+                if (data.success) {
+                    showAlert(data.message || "Cities are updating successfully.", "success");
+                    loadCities(); // Immediate refresh
+                    
+                    // Start polling every 5 seconds
+                    if (!intervalId) {
+                        intervalId = setInterval(loadCities, 5000);
+                    }
+                } else {
+                    showAlert(data.message || "Failed to start update process.", "error");
+                }
+            })
+            .catch(err => {
+                console.error("Error fetching AQI data:", err);
+                showAlert(err.message || "Failed to connect to server. Please check your connection and try again.", "error");
+            })
+            .finally(() => {
+                isUpdating = false;
+                fetchBtn.disabled = false;
+                fetchBtn.textContent = "Update";
             });
     });
 
