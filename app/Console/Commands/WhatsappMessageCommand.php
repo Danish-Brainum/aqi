@@ -35,25 +35,25 @@ class WhatsappMessageCommand extends Command
 
         try {
             $cities = City::select('name', 'aqi')->get();
-    
+
             if ($cities->isEmpty()) {
                 Log::warning('No cities found to send WhatsApp messages.');
                 return;
             }
-    
+
             $count = 0;
             foreach ($cities as $row) {
                 // Access as object property, not array
                 $aqi = $row->aqi;
                 $cityName = $row->name;
-                
+
                 // Check if AQI is valid (not null, not 'Error', and numeric)
                 if ($aqi !== null && $aqi !== 'Error' && is_numeric($aqi)) {
-                    $to = "923045039326"; // Or phone number if exists
-                    
+                    $to = "923073017101"; // Or phone number if exists
+
                     // Get city-specific message
                     $message = $this->getWhatsappMessage($aqi, $cityName);
-                    
+
                     if ($message) {
                         dispatch(new SendWhatsappMessageJob($to, $cityName, $aqi, $message));
                         $count++;
@@ -82,7 +82,7 @@ class WhatsappMessageCommand extends Command
 
         // Ensure AQI is numeric for comparison
         $aqi = is_numeric($aqi) ? (int) $aqi : null;
-        
+
         if (is_null($aqi)) {
             return null;
         }
