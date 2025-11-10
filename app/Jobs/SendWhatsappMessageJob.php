@@ -32,9 +32,9 @@ class SendWhatsappMessageJob implements ShouldQueue
 
     public function handle(WhatsappService $whatsapp)
     {
-        
+
         try{
-            $template = "aqi_notification";
+            $template = "aqi_alert";
             $language = "en";
 
             $components = [
@@ -65,6 +65,6 @@ class SendWhatsappMessageJob implements ShouldQueue
         }catch(Exception $exception){
             Log::error('Whatsapp error messages: ' . $exception->getMessage());
         }
-        
+
     }
 }
