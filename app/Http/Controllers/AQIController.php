@@ -304,6 +304,34 @@ class AQIController extends Controller
         return $message;
     }
 
+    /**
+     * Sanitize message text for WhatsApp template parameters
+     * WhatsApp doesn't allow: newlines (\n), tabs (\t), or more than 4 consecutive spaces
+     * 
+     * @param string $message
+     * @return string
+     */
+    private function sanitizeWhatsAppMessage(string $message): string
+    {
+        if (empty($message)) {
+            return '';
+        }
+
+        // Replace newlines and tabs with single space
+        $sanitized = str_replace(["\r\n", "\r", "\n", "\t"], ' ', $message);
+        
+        // Replace multiple consecutive spaces (more than 1) with single space
+        $sanitized = preg_replace('/\s+/', ' ', $sanitized);
+        
+        // Trim leading and trailing spaces
+        $sanitized = trim($sanitized);
+        
+        // Ensure no more than 4 consecutive spaces (extra safety check)
+        $sanitized = preg_replace('/ {5,}/', '    ', $sanitized);
+        
+        return $sanitized;
+    }
+
     public function download()
     {
         $output = session('aqi_results', []);
@@ -342,6 +370,12 @@ class AQIController extends Controller
 
         foreach ($data as $range => $message) {
             if (!empty($message)) {
+                // Sanitize WhatsApp messages: remove newlines, tabs, and limit consecutive spaces
+                // WhatsApp template parameters cannot contain newlines, tabs, or more than 4 consecutive spaces
+                if ($type === 'whatsapp') {
+                    $message = $this->sanitizeWhatsAppMessage($message);
+                }
+                
                 AQI::updateOrCreate(
                     [
                         'range' => $range,

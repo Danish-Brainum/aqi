@@ -45,17 +45,22 @@ class SendWhatsappMessageJob implements ShouldQueue
             $template = trim(config('services.whatsapp.template_name', 'aqi_notification'));
             $language = config('services.whatsapp.template_language', 'en');
 
+            // Sanitize message text for WhatsApp template parameters
+            // WhatsApp doesn't allow: newlines (\n), tabs (\t), or more than 4 consecutive spaces
+            $sanitizedMessage = $this->sanitizeMessageForWhatsApp($this->message ?? '');
+            $sanitizedCity = $this->sanitizeMessageForWhatsApp($this->city ?? '');
+
             $components = [
                 [
                     "type" => "body",
                     "parameters" => [
                         [
                             "type" => "text",
-                            "text" => $this->city ?? '',
+                            "text" => $sanitizedCity,
                         ],
                         [
                             "type" => "text",
-                            "text" => $this->message ?? '',
+                            "text" => $sanitizedMessage,
                         ],
                     ],
                 ],
@@ -76,6 +81,33 @@ class SendWhatsappMessageJob implements ShouldQueue
             Log::error('💥 Whatsapp error: ' . $exception->getMessage());
             Log::error('💥 Whatsapp error trace: ' . $exception->getTraceAsString());
         }
+    }
 
+    /**
+     * Sanitize message text for WhatsApp template parameters
+     * WhatsApp doesn't allow: newlines (\n), tabs (\t), or more than 4 consecutive spaces
+     * 
+     * @param string $message
+     * @return string
+     */
+    private function sanitizeMessageForWhatsApp(string $message): string
+    {
+        if (empty($message)) {
+            return '';
+        }
+
+        // Replace newlines and tabs with single space
+        $sanitized = str_replace(["\r\n", "\r", "\n", "\t"], ' ', $message);
+        
+        // Replace multiple consecutive spaces (more than 1) with single space
+        $sanitized = preg_replace('/\s+/', ' ', $sanitized);
+        
+        // Trim leading and trailing spaces
+        $sanitized = trim($sanitized);
+        
+        // Ensure no more than 4 consecutive spaces (extra safety check)
+        $sanitized = preg_replace('/ {5,}/', '    ', $sanitized);
+        
+        return $sanitized;
     }
 }

@@ -20,18 +20,20 @@ class WhatsappMessageSeeder extends Seeder
         $this->command->info('🔄 Starting WhatsApp messages seeder...');
 
         // Define messages for each AQI range (only message body, no header/footer)
+        // IMPORTANT: WhatsApp template parameters cannot contain newlines, tabs, or more than 4 consecutive spaces
+        // Messages are stored as single-line text (newlines replaced with spaces)
         $messages = [
-            'good' => "Today's air is fresh and safe. A great day to enjoy the outdoors!\n\nLet's keep it that way — choose public transport, plant trees, and protect clean air.",
+            'good' => "Today's air is fresh and safe. A great day to enjoy the outdoors! Let's keep it that way — choose public transport, plant trees, and protect clean air.",
             
-            'moderate' => "Air quality is acceptable, but may affect sensitive individuals.\n\nIf you feel discomfort, take it easy and stay hydrated.\n\nLet's reduce car use and support cleaner choices.",
+            'moderate' => "Air quality is acceptable, but may affect sensitive individuals. If you feel discomfort, take it easy and stay hydrated. Let's reduce car use and support cleaner choices.",
             
-            'unhealthy_sensitive' => "Today's air may cause coughing or irritation for children and elders.\n\nLimit outdoor play, wear a mask if needed, and keep windows closed.\n\nLet's care for our loved ones together.",
+            'unhealthy_sensitive' => "Today's air may cause coughing or irritation for children and elders. Limit outdoor play, wear a mask if needed, and keep windows closed. Let's care for our loved ones together.",
             
-            'unhealthy' => "Air quality is poor today. Everyone may feel its effects.\n\nStay indoors when possible, use air purifiers, and avoid traffic-heavy areas.\n\nLet's protect our lungs and help others do the same.",
+            'unhealthy' => "Air quality is poor today. Everyone may feel its effects. Stay indoors when possible, use air purifiers, and avoid traffic-heavy areas. Let's protect our lungs and help others do the same.",
             
-            'very_unhealthy' => "Breathing this air can be harmful. Let's take extra care today.\n\nSeal windows, avoid outdoor exposure, and check on vulnerable family members.\n\nTogether, we can breathe safer.",
+            'very_unhealthy' => "Breathing this air can be harmful. Let's take extra care today. Seal windows, avoid outdoor exposure, and check on vulnerable family members. Together, we can breathe safer.",
             
-            'hazardous' => "This is an air emergency. Everyone is at risk.\n\nStay indoors, avoid all outdoor activity, and follow safety alerts.\n\nLet's protect our breath, our health, and each other.",
+            'hazardous' => "This is an air emergency. Everyone is at risk. Stay indoors, avoid all outdoor activity, and follow safety alerts. Let's protect our breath, our health, and each other.",
         ];
 
         // Get all cities from the database
@@ -54,6 +56,10 @@ class WhatsappMessageSeeder extends Seeder
 
             // Create/update messages for each AQI range
             foreach ($messages as $range => $messageText) {
+                // Sanitize message: remove newlines, tabs, and limit consecutive spaces
+                // WhatsApp template parameters cannot contain newlines, tabs, or more than 4 consecutive spaces
+                $sanitizedMessage = $this->sanitizeMessage($messageText);
+                
                 $aqiRecord = AQI::updateOrCreate(
                     [
                         'range' => $range,
@@ -61,7 +67,7 @@ class WhatsappMessageSeeder extends Seeder
                         'city' => $city->name,
                     ],
                     [
-                        'message' => $messageText,
+                        'message' => $sanitizedMessage,
                     ]
                 );
 
@@ -84,6 +90,34 @@ class WhatsappMessageSeeder extends Seeder
         $this->command->info("   - Total records: {$totalRecords}");
 
         Log::info("✅ [WhatsappMessageSeeder] Completed: {$cities->count()} cities, {$totalCreated} created, {$totalUpdated} updated");
+    }
+
+    /**
+     * Sanitize message text for WhatsApp template parameters
+     * WhatsApp doesn't allow: newlines (\n), tabs (\t), or more than 4 consecutive spaces
+     * 
+     * @param string $message
+     * @return string
+     */
+    private function sanitizeMessage(string $message): string
+    {
+        if (empty($message)) {
+            return '';
+        }
+
+        // Replace newlines and tabs with single space
+        $sanitized = str_replace(["\r\n", "\r", "\n", "\t"], ' ', $message);
+        
+        // Replace multiple consecutive spaces (more than 1) with single space
+        $sanitized = preg_replace('/\s+/', ' ', $sanitized);
+        
+        // Trim leading and trailing spaces
+        $sanitized = trim($sanitized);
+        
+        // Ensure no more than 4 consecutive spaces (extra safety check)
+        $sanitized = preg_replace('/ {5,}/', '    ', $sanitized);
+        
+        return $sanitized;
     }
 }
 
