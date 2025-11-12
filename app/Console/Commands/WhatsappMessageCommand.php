@@ -49,7 +49,7 @@ class WhatsappMessageCommand extends Command
 
                 // Check if AQI is valid (not null, not 'Error', and numeric)
                 if ($aqi !== null && $aqi !== 'Error' && is_numeric($aqi)) {
-                    $to = "923073017101"; // Or phone number if exists
+                    $to = "923045039326"; // Or phone number if exists
 
                     // Get city-specific message
                     $message = $this->getWhatsappMessage($aqi, $cityName);
