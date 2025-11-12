@@ -33,9 +33,17 @@ class SendWhatsappMessageJob implements ShouldQueue
     public function handle(WhatsappService $whatsapp)
     {
 
-        try{
-            $template = "aqi_alert";
-            $language = "en";
+        try {
+            // Template format:
+            // Mr. Pulmo 🌿 — Caring for You and {{1}}
+            // {{2}}
+            // *Your breath matters to us.*
+            // Powered by Pulmo, CC
+            // Where {{1}} = city name, {{2}} = message
+            
+            // Template name - update in .env as WHATSAPP_TEMPLATE_NAME
+            $template = trim(config('services.whatsapp.template_name', 'aqi_notification'));
+            $language = config('services.whatsapp.template_language', 'en');
 
             $components = [
                 [
@@ -47,23 +55,26 @@ class SendWhatsappMessageJob implements ShouldQueue
                         ],
                         [
                             "type" => "text",
-                            "text" => (string)$this->aqi ?? '',
-                        ],
-                        [
-                            "type" => "text",
                             "text" => $this->message ?? '',
                         ],
                     ],
                 ],
             ];
             $resp = $whatsapp->sendTemplate($this->to, $template, $language, $components);
+            
             if (isset($resp['messages'][0]['id'])) {
-                Log::info("WhatsApp message sent to {$this->to} for {$this->city} (AQI {$this->aqi})");
+                Log::info("✅ WhatsApp message sent to {$this->to} for city {$this->city} (AQI {$this->aqi})");
             } else {
-                Log::error("WhatsApp message failed for {$this->to}", ['response' => $resp]);
+                Log::error("❌ WhatsApp message failed for {$this->to}", ['response' => $resp]);
+                
+                // Log error details if available
+                if (isset($resp['error'])) {
+                    Log::error("WhatsApp API Error: " . json_encode($resp['error']));
+                }
             }
-        }catch(Exception $exception){
-            Log::error('Whatsapp error messages: ' . $exception->getMessage());
+        } catch (Exception $exception) {
+            Log::error('💥 Whatsapp error: ' . $exception->getMessage());
+            Log::error('💥 Whatsapp error trace: ' . $exception->getTraceAsString());
         }
 
     }
