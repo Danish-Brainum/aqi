@@ -3,6 +3,7 @@
 use App\Http\Controllers\AQIController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\WhatsappRecipientController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -23,6 +24,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/sendWhatsapp', [AQIController::class, 'sendWhatsapp'])->name('sendWhatsapp');
     Route::post('/save-CSV', [AQIController::class, 'saveCSV'])->name('saveCSV');
     Route::post('/add-manual-record', [AQIController::class, 'addManualRecord'])->name('add-manual-record');
+    
+    // WhatsApp Recipients Management
+    Route::get('/whatsapp-recipients', [WhatsappRecipientController::class, 'index'])->name('whatsapp-recipients.index');
+    Route::post('/whatsapp-recipients', [WhatsappRecipientController::class, 'store'])->name('whatsapp-recipients.store');
+    Route::get('/whatsapp-recipients/{id}', [WhatsappRecipientController::class, 'show'])->name('whatsapp-recipients.show');
+    Route::put('/whatsapp-recipients/{id}', [WhatsappRecipientController::class, 'update'])->name('whatsapp-recipients.update');
+    Route::delete('/whatsapp-recipients/{id}', [WhatsappRecipientController::class, 'destroy'])->name('whatsapp-recipients.destroy');
+    Route::post('/whatsapp-recipients/{id}/toggle-active', [WhatsappRecipientController::class, 'toggleActive'])->name('whatsapp-recipients.toggle-active');
+    Route::post('/whatsapp-recipients/upload-csv', [WhatsappRecipientController::class, 'uploadCsv'])->name('whatsapp-recipients.upload-csv');
     // Profile
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.show');
     Route::post('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');

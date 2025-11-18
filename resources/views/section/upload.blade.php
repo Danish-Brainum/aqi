@@ -1,3 +1,35 @@
+<style>
+  /* Message cell truncation with ellipsis */
+  .message-cell {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: help;
+    line-height: 1.5;
+    display: block;
+  }
+  
+  /* Ensure table cells have consistent height and alignment */
+  #results-table tbody td {
+    vertical-align: middle;
+  }
+  
+  /* Better table row spacing */
+  #results-table tbody tr {
+    height: auto;
+    min-height: 48px;
+  }
+  
+  /* Email truncation */
+  #results-table tbody td .truncate {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>
+
 <section id="upload" class="tab-content">
     {{-- Top row: CSV Upload + Add Button + Tips --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -96,45 +128,53 @@ class="rounded-full border border-slate-300 px-4 py-2 text-sm shadow-sm focus:ou
     <div class="mt-3 overflow-x-auto rounded-xl border border-slate-200">
       <div class="max-h-96 overflow-y-auto"> {{-- vertical scroll --}}
         <table id="results-table" class="min-w-full divide-y divide-slate-200">
-          <thead class="bg-slate-50">
+          <thead class="bg-slate-50 sticky top-0 z-10">
             <tr>
-              <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">ID</th>
-              <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Name</th>
-              <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Email</th>
-              <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">City</th>
-              <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Phone</th>
-              <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">AQI</th>
-              <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Message</th>
-              <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Action</th>
+              <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 w-16">ID</th>
+              <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[120px]">Name</th>
+              <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[180px]">Email</th>
+              <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[100px]">City</th>
+              <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[120px]">Phone</th>
+              <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 w-20">AQI</th>
+              <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[200px] max-w-[300px]">Message</th>
+              <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 w-32">Action</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 bg-white">
             @forelse($results as $i => $row)
-              <tr class="hover:bg-indigo-50/40" data-id="{{ $row['id'] }}">
-                <td class="px-4 py-2 text-sm">{{ $row['id'] }}</td>
-                <td class="px-4 py-2 text-sm">{{ $row['name'] }}</td>
-                <td class="px-4 py-2 text-sm">{{ $row['email'] }}</td>
-                <td class="px-4 py-2 text-sm">{{ $row['city'] }}</td>
-                <td class="px-4 py-2 text-sm">{{ $row['phone'] }}</td>
-                <td class="px-4 py-2 text-sm font-semibold">
-                  <span class="rounded-full px-2 py-1 text-xs
-                    {{ ($row->aqi ?? 0) <= 50 ? 'bg-green-100 text-green-700' :
-                        (($row->aqi ?? 0) <= 100 ? 'bg-yellow-100 text-yellow-700' :
+              <tr class="hover:bg-indigo-50/40 transition-colors" data-id="{{ $row['id'] }}">
+                <td class="px-3 py-2.5 text-sm text-slate-700 font-medium">{{ $row['id'] }}</td>
+                <td class="px-3 py-2.5 text-sm text-slate-800">{{ $row['name'] }}</td>
+                <td class="px-3 py-2.5 text-sm text-slate-700">
+                  <div class="truncate max-w-[180px]" title="{{ $row['email'] }}">{{ $row['email'] }}</div>
+                </td>
+                <td class="px-3 py-2.5 text-sm text-slate-700">{{ $row['city'] }}</td>
+                <td class="px-3 py-2.5 text-sm text-slate-700">{{ $row['phone'] }}</td>
+                <td class="px-3 py-2.5 text-sm font-semibold">
+                  <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
+                    {{ ($row['aqi'] ?? 0) <= 50 ? 'bg-green-100 text-green-700' :
+                        (($row['aqi'] ?? 0) <= 100 ? 'bg-yellow-100 text-yellow-700' :
                         'bg-red-100 text-red-700') }}">
                     {{ $row['aqi'] ?? 'N/A' }}
                   </span>
                 </td>
-                <td class="px-4 py-2 text-sm">{{ $row['message'] }}</td>
-                <td class="px-4 py-2 text-sm">
-                  <div class="inline-flex items-center gap-2">
+                <td class="px-3 py-2.5 text-sm text-slate-700">
+                  <div class="message-cell max-w-[300px] truncate" 
+                       title="{{ htmlspecialchars($row['message'] ?? '', ENT_QUOTES, 'UTF-8') }}"
+                       data-full-message="{{ htmlspecialchars($row['message'] ?? '', ENT_QUOTES, 'UTF-8') }}">
+                    {{ $row['message'] ?? 'N/A' }}
+                  </div>
+                </td>
+                <td class="px-3 py-2.5 text-sm">
+                  <div class="inline-flex items-center gap-1.5">
                     <button 
-                      class="edit-btn inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200"
+                      class="edit-btn inline-flex items-center justify-center rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200 transition-colors"
                       data-index="{{ $i }}" 
                       data-url="{{ route('records.update') }}">
                       Edit
                     </button>
                     <button 
-                      class="delete-btn inline-flex items-center gap-2 rounded-md bg-red-100 px-3 py-1 text-sm text-red-700 hover:bg-red-200" 
+                      class="delete-btn inline-flex items-center justify-center rounded-md bg-red-100 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-200 transition-colors" 
                       data-id="{{ $row['id'] }}" 
                       data-url="{{ route('records.delete') }}">
                       Delete
@@ -144,7 +184,7 @@ class="rounded-full border border-slate-300 px-4 py-2 text-sm shadow-sm focus:ou
               </tr>
             @empty
               <tr class="no-records">
-                <td colspan="12" class="px-4 py-4 text-center text-base font-bold text-slate-500">
+                <td colspan="8" class="px-4 py-8 text-center text-base font-semibold text-slate-500">
                   No CSV Found
                 </td>
               </tr>

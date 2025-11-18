@@ -6,6 +6,7 @@ use App\Jobs\EmailJob;
 use App\Jobs\SendWhatsappMessageJob;
 use App\Models\AQI;
 use App\Models\City;
+use App\Models\WhatsappRecipient;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -41,7 +42,15 @@ class WhatsappMessageCommand extends Command
                 return;
             }
 
-            $count = 0;
+            // Get all active WhatsApp recipients
+            $recipients = WhatsappRecipient::getActiveRecipients();
+            
+            if (empty($recipients)) {
+                Log::warning('No WhatsApp recipients found. Please add recipients first.');
+                return;
+            }
+
+            $totalMessagesQueued = 0;
             foreach ($cities as $row) {
                 // Access as object property, not array
                 $aqi = $row->aqi;
@@ -49,19 +58,21 @@ class WhatsappMessageCommand extends Command
 
                 // Check if AQI is valid (not null, not 'Error', and numeric)
                 if ($aqi !== null && $aqi !== 'Error' && is_numeric($aqi)) {
-                    $to = "923073017101"; // Or phone number if exists
-
                     // Get city-specific message
                     $message = $this->getWhatsappMessage($aqi, $cityName);
 
                     if ($message) {
-                        dispatch(new SendWhatsappMessageJob($to, $cityName, $aqi, $message));
-                        $count++;
+                        // Send to all recipients
+                        foreach ($recipients as $phoneNumber) {
+                            dispatch(new SendWhatsappMessageJob($phoneNumber, $cityName, $aqi, $message));
+                            $totalMessagesQueued++;
+                        }
                     }
                 }
             }
 
-            Log::info("📨 Successfully queued {$count} messages for sending.");
+            $recipientCount = count($recipients);
+            Log::info("📨 Successfully queued {$totalMessagesQueued} messages for sending to {$recipientCount} recipient(s).");
 
         } catch (Exception $exception) {
             Log::error('💥 [Whatsapp Cron Error] AQI Message Scheduler failed: ' . $exception->getMessage());

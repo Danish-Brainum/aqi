@@ -77,6 +77,11 @@ class AQIController extends Controller
         $email_messages = AQI::where('type', 'email')->pluck('message', 'range')->toArray();
         $whatsapp_messages = AQI::where('type', 'whatsapp')->pluck('message', 'range')->toArray();
         $settings = Settings::first();
+        
+        // ✅ get WhatsApp recipients for recipients tab
+        $recipients = WhatsappRecipient::orderBy('created_at', 'desc')->paginate(20);
+        $totalCount = WhatsappRecipient::count();
+        $activeCount = WhatsappRecipient::where('active', true)->count();
 
         return view('dashboard', [
             'results' => $paginatedResults,
@@ -84,7 +89,10 @@ class AQIController extends Controller
             'cities' => $cities,
             'email_messages' => $email_messages,
             'whatsapp_messages' => $whatsapp_messages,
-            'settings' => $settings
+            'settings' => $settings,
+            'recipients' => $recipients,
+            'totalCount' => $totalCount,
+            'activeCount' => $activeCount
         ]);
     }
 

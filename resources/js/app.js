@@ -607,6 +607,7 @@ import { initWhatsappMessageModal } from "./modals/whatsapp-message.js";
 import { initEmailMessageModal } from "./modals/email-message.js";
 import { initSaveCSV } from "./upload/save-csv.js";
 import { initSaveOnLogoutConfirmation } from "./confirmation/save-on-logout.js";
+import { initRecipients } from "./recipients/recipients.js";
 
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -626,4 +627,5 @@ document.addEventListener("DOMContentLoaded", () => {
     initEmailMessageModal();
     initSaveCSV();
     initSaveOnLogoutConfirmation();
+    initRecipients();
 })

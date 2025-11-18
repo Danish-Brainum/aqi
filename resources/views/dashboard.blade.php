@@ -21,6 +21,9 @@
     <button data-tab="aqi_info" class="tab-btn rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:text-indigo-700 data-[active=true]:bg-white data-[active=true]:text-indigo-700 data-[active=true]:shadow">
       WhatsApp Campaigns (by City)
     </button>
+    <button data-tab="whatsapp-recipients" class="tab-btn rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:text-indigo-700 data-[active=true]:bg-white data-[active=true]:text-indigo-700 data-[active=true]:shadow">
+      WhatsApp Recipients
+    </button>
   </div>
 </div>
 
@@ -28,5 +31,6 @@
 
 {{-- @include('section.custom-message') --}}
 @include('section.aqi_info')
+@include('section.whatsapp-recipients')
 @include('modal.edit-row')
 @endsection

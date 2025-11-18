@@ -16,14 +16,14 @@
     <div class="overflow-x-auto rounded-xl border border-slate-200">
         <div class="max-h-96 overflow-y-auto">
             <table id="deleted-table" class="min-w-full divide-y divide-slate-200">
-                <thead class="bg-slate-50">
+                <thead class="bg-slate-50 sticky top-0 z-10">
                     <tr>
-                        <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">ID</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Name</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Email</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">City</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">Phone</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold tracking-wide text-slate-600">AQI</th>
+                        <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 w-16">ID</th>
+                        <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[120px]">Name</th>
+                        <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[180px]">Email</th>
+                        <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[100px]">City</th>
+                        <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[120px]">Phone</th>
+                        <th class="px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-600 w-20">AQI</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 bg-white">
