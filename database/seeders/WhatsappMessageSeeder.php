@@ -23,17 +23,17 @@ class WhatsappMessageSeeder extends Seeder
         // IMPORTANT: WhatsApp template parameters cannot contain newlines, tabs, or more than 4 consecutive spaces
         // Messages are stored as single-line text (newlines replaced with spaces)
         $messages = [
-            'good' => "Today's air is fresh and safe. A great day to enjoy the outdoors! Let's keep it that way — choose public transport, plant trees, and protect clean air.",
+            'good' => "which is Good. Today’s air is fresh and safe — a great day to enjoy the outdoors! Let’s keep it that way — choose public transport, plant trees, and protect clean air.",
             
-            'moderate' => "Air quality is acceptable, but may affect sensitive individuals. If you feel discomfort, take it easy and stay hydrated. Let's reduce car use and support cleaner choices.",
+            'moderate' => "which is Moderate. Air quality is acceptable, but may affect sensitive individuals. If you feel discomfort, take it easy and stay hydrated. Let’s reduce car use and support cleaner choices.",
             
-            'unhealthy_sensitive' => "Today's air may cause coughing or irritation for children and elders. Limit outdoor play, wear a mask if needed, and keep windows closed. Let's care for our loved ones together.",
+            'unhealthy_sensitive' => "which is Unhealthy for Sensitive Groups. Today’s air may cause coughing or irritation for children and elders. Limit outdoor play, wear a mask if needed, and keep windows closed. Let’s care for our loved ones together.",
             
-            'unhealthy' => "Air quality is poor today. Everyone may feel its effects. Stay indoors when possible, use air purifiers, and avoid traffic-heavy areas. Let's protect our lungs and help others do the same.",
+            'unhealthy' => "which is Unhealthy. Air quality is poor today. Everyone may feel its effects. Stay indoors when possible, use air purifiers, and avoid traffic-heavy areas. Let's protect our lungs and help others do the same.",
             
-            'very_unhealthy' => "Breathing this air can be harmful. Let's take extra care today. Seal windows, avoid outdoor exposure, and check on vulnerable family members. Together, we can breathe safer.",
+            'very_unhealthy' => "which is Very Unhealthy. Breathing this air can be harmful. Let’s take extra care today. Seal windows, avoid outdoor exposure, and check on vulnerable family members. Together, we can breathe safer.",
             
-            'hazardous' => "This is an air emergency. Everyone is at risk. Stay indoors, avoid all outdoor activity, and follow safety alerts. Let's protect our breath, our health, and each other.",
+            'hazardous' => "which is Hazardous. This is an air emergency. Everyone is at risk. Stay indoors, avoid all outdoor activity, and follow safety alerts. Let’s protect our breath, our health, and each other.",
         ];
 
         // Get all cities from the database

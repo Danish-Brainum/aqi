@@ -12,7 +12,10 @@ class NotificationService
     public function sendEmail(string $email, string $message): bool
     {
         try {
-            Mail::to($email)->send(new AutoReportMail(['message' => $message]));
+            Mail::to($email)->send(new AutoReportMail([
+                'message' => $message,
+                'subject' => 'Mr. Pulmo - Caring for You', // Header as subject
+            ]));
             return true;
         } catch (\Throwable $e) {
             Log::error("Email failed to {$email}: " . $e->getMessage());

@@ -9,6 +9,7 @@ use App\Models\AQI;
 use App\Models\City;
 use App\Models\CSV;
 use App\Models\Settings;
+use App\Models\WhatsappRecipient;
 use App\Services\AqiFetchService;
 use App\Services\CSVService;
 use App\Services\WhatsappService;
@@ -227,22 +228,48 @@ class AQIController extends Controller
         if (is_null($aqi)) {
             return "Hi {$name}, we couldn't retrieve air quality data for {$city}.";
         }
-        // Load custom messages from DB
-        $messages = Aqi::where('type', 'email')->pluck('message','range')->toArray();
+        
+        // Load custom messages from DB (only message body, header and footer are added in email template)
+        $messages = Aqi::where('type', 'email')
+            ->whereNull('city') // Get global messages
+            ->pluck('message', 'range')
+            ->toArray();
 
+        // Determine AQI range
+        $range = null;
         if ($aqi <= 50) {
-            return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['good'] ?? "the air quality in {$city} is Good 😊 (AQI: {$aqi}). Enjoy your day!");
+            $range = 'good';
         } elseif ($aqi <= 100) {
-            return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['moderate'] ?? "the air quality in {$city} is Moderate 🙂 (AQI: {$aqi}). It's generally okay.");
+            $range = 'moderate';
         } elseif ($aqi <= 150) {
-            return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['unhealthy_sensitive'] ?? "the air quality in {$city} is Unhealthy for Sensitive Groups 😷 (AQI: {$aqi}). Be careful if you have breathing issues.");
+            $range = 'unhealthy_sensitive';
         } elseif ($aqi <= 200) {
-            return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['unhealthy'] ?? "the air quality in {$city} is Unhealthy ❌ (AQI: {$aqi}). Try to limit outdoor activity.");
+            $range = 'unhealthy';
         } elseif ($aqi <= 300) {
-            return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['very_unhealthy'] ?? "the air quality in {$city} is Very Unhealthy ⚠️ (AQI: {$aqi}). Consider staying indoors.");
+            $range = 'very_unhealthy';
         } else {
-            return "Hi {$name}! Today AQI in {$city} is {$aqi}. " . ($messages['hazardous'] ?? "the air quality in {$city} is Hazardous ☠️ (AQI: {$aqi}). Stay safe and avoid going outside.");
+            $range = 'hazardous';
         }
+
+        // Get message body from database, or use fallback
+        $messageBody = $messages[$range] ?? null;
+        
+        if ($messageBody) {
+            // Return the message body as-is (header and footer are added in email template)
+            return "The air quality index in {$city} is {$aqi}, {$messageBody}";
+        }
+
+        // Fallback messages if database doesn't have them
+        $fallbackMessages = [
+            'good' => "Today's air is fresh and safe. A great day to enjoy the outdoors!\n\nLet's keep it that way — choose public transport, plant trees, and protect clean air.",
+            'moderate' => "Air quality is acceptable, but may affect sensitive individuals.\n\nIf you feel discomfort, take it easy and stay hydrated.\n\nLet's reduce car use and support cleaner choices.",
+            'unhealthy_sensitive' => "Today's air may cause coughing or irritation for children and elders.\n\nLimit outdoor play, wear a mask if needed, and keep windows closed.\n\nLet's care for our loved ones together.",
+            'unhealthy' => "Air quality is poor today. Everyone may feel its effects.\n\nStay indoors when possible, use air purifiers, and avoid traffic-heavy areas.\n\nLet's protect our lungs and help others do the same.",
+            'very_unhealthy' => "Breathing this air can be harmful. Let's take extra care today.\n\nSeal windows, avoid outdoor exposure, and check on vulnerable family members.\n\nTogether, we can breathe safer.",
+            'hazardous' => "This is an air emergency. Everyone is at risk.\n\nStay indoors, avoid all outdoor activity, and follow safety alerts.\n\nLet's protect our breath, our health, and each other.",
+        ];
+
+        return $fallbackMessages[$range] ?? "";
     }
 
     /**
@@ -576,6 +603,7 @@ class AQIController extends Controller
                 $data = [
                     'email' => $email['email'],
                     'message' => $email['message'],
+                    'subject' => 'Mr. Pulmo — Caring for You', // Header as subject
                 ];
 
                 Mail::to($email['email'])->send(new AutoReportMail($data));
@@ -596,6 +624,15 @@ class AQIController extends Controller
             return back()->with('error', 'No records found to send WhatsApp messages.');
         }
 
+        // Get all active WhatsApp recipients
+        $recipients = WhatsappRecipient::getActiveRecipients();
+        
+        if (empty($recipients)) {
+            return back()->with('error', 'No WhatsApp recipients found. Please add recipients first.');
+        }
+
+        $totalMessagesQueued = 0;
+
         foreach ($cities as $row) {
             // Access as object property, not array
             $aqi = $row->aqi;
@@ -603,16 +640,20 @@ class AQIController extends Controller
 
             // Check if AQI is valid (not null, not 'Error', and numeric)
             if ($aqi !== null && $aqi !== 'Error' && is_numeric($aqi)) {
-                $to = "923073017101"; // Or phone number if exists
                 $message = $this->getWhatsappMessage($aqi, $cityName);
 
                 if ($message) {
-                    dispatch(new SendWhatsappMessageJob($to, $cityName, $aqi, $message));
+                    // Send to all recipients
+                    foreach ($recipients as $phoneNumber) {
+                        dispatch(new SendWhatsappMessageJob($phoneNumber, $cityName, $aqi, $message));
+                        $totalMessagesQueued++;
+                    }
                 }
             }
         }
 
-        return back()->with('success', 'WhatsApp messages are being sent in background.');
+        $recipientCount = count($recipients);
+        return back()->with('success', "WhatsApp messages are being sent in background to {$recipientCount} recipient(s). Total {$totalMessagesQueued} message(s) queued.");
     }
 
     public function saveCSV(Request $request)

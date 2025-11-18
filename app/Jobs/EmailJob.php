@@ -33,6 +33,7 @@ class EmailJob implements ShouldQueue
             $data = [
                 'email' => $this->email,
                 'message' => $this->message,
+                'subject' => 'Mr. Pulmo - Caring for You', // Header as subject
             ];
 
             Mail::to($this->email)->send(new AutoReportMail($data));

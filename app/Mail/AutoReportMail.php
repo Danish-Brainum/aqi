@@ -27,8 +27,11 @@ class AutoReportMail extends Mailable
      */
     public function envelope(): Envelope
     {
+        // Use the header as email subject
+        $subject = $this->data['subject'] ?? 'Mr. Pulmo - Caring for You';
+        
         return new Envelope(
-            subject: 'Daily AQI Report from Palmonol AI',
+            subject: $subject,
         );
     }
 

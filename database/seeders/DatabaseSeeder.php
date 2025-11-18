@@ -5,7 +5,9 @@ namespace Database\Seeders;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Database\Seeders\CitySeeder;
+use Database\Seeders\EmailMessageSeeder;
 use Database\Seeders\WhatsappMessageSeeder;
+use Database\Seeders\WhatsappRecipientSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -23,7 +25,9 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call(CitySeeder::class);
+        $this->call(EmailMessageSeeder::class);
         $this->call(WhatsappMessageSeeder::class);
+        $this->call(WhatsappRecipientSeeder::class);
 
     }
 }
