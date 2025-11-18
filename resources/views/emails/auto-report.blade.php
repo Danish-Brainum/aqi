@@ -39,7 +39,7 @@
     </div>
     
     <div class="footer">
-        Your breath matters to us.
+       <b>Your breath matters to us.</b>
         Powered by Pulmonol, CCL Pakistan
     </div>
 </body>
