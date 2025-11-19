@@ -1,67 +1,41 @@
 <section id="whatsapp-recipients" class="tab-content hidden">
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-slate-800 mb-2">WhatsApp Recipients Management</h2>
-        <p class="text-slate-600">Manage phone numbers that will receive WhatsApp messages</p>
-    </div>
-
-    {{-- Top Actions: Upload CSV + Add Manual --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {{-- CSV Upload Card --}}
-        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-slate-800 mb-4">Upload CSV/Excel</h3>
-            <form action="{{ route('whatsapp-recipients.upload-csv') }}" method="POST" enctype="multipart/form-data" id="upload-recipients-form">
+    {{-- Top row: CSV Upload + Add Button + Tips --}}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 mt-4">
+        {{-- Tips (order first on small, third on large) --}}
+        <div class="order-1 lg:order-3 rounded-2xl border border-slate-200 bg-gradient-to-br from-indigo-600 to-sky-500 p-6 text-white shadow-sm">
+            <h3 class="text-base font-semibold">Tips</h3>
+            <ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-indigo-50/90">
+                <li>CSV format: Phone (required), Name (optional)</li>
+                <li>Example: <code class="bg-white/20 px-1 rounded">03073017101,John Doe</code></li>
+                <li>Only active recipients will receive messages</li>
+            </ul>
+        </div>
+      
+        {{-- CSV Upload --}}
+        <div class="order-2 lg:order-1 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex items-center justify-center">
+            <form action="{{ route('whatsapp-recipients.upload-csv') }}" method="POST" enctype="multipart/form-data" class="space-y-4" id="upload-recipients-form">
                 @csrf
-                <div id="recipients-dropzone" class="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-slate-500 transition hover:border-indigo-300 hover:bg-indigo-50">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div id="recipients-dropzone" class="flex flex-col sm:flex-row items-center justify-center gap-4 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-8 py-6 text-slate-500 text-center transition hover:border-indigo-300 hover:bg-indigo-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 0L8 8m4-4l4 4" />
                     </svg>
-                    <span class="text-center">Drag & drop CSV here or</span>
-                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700">
+                    <span class="text-center sm:text-left">Drag & drop CSV here or</span>
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700">
                         <input type="file" name="csv" accept=".csv,.txt,.xlsx,.xls" class="hidden" id="recipients-file-input" required>
-                        Browse File
+                        Browse
                     </label>
                 </div>
                 <div id="recipients-file-error" class="mt-2 text-sm text-red-600"></div>
-                <div id="recipients-file-name" class="mt-2 text-sm text-slate-500"></div>
-                <div class="mt-4">
-                    <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700">
-                        Upload Recipients
-                    </button>
-                </div>
-                <div class="mt-3 text-xs text-slate-500">
-                    <p><strong>CSV Format:</strong> Phone (required), Name (optional)</p>
-                    <p class="mt-1">Example: <code>923073017101,John Doe</code></p>
-                </div>
+                <div id="recipients-file-name" class="text-sm text-slate-500"></div>
             </form>
         </div>
-
-        {{-- Manual Add Card --}}
-        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-slate-800 mb-4">Add Recipient Manually</h3>
-            <form id="add-recipient-form" class="space-y-4">
-                @csrf
-                <div>
-                    <label for="phone" class="block text-sm font-medium text-slate-700 mb-1">Phone Number *</label>
-                    <input type="text" id="phone" name="phone" required
-                           class="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                           placeholder="923073017101 (without + sign)">
-                    <p class="mt-1 text-xs text-slate-500">Enter phone number in international format (e.g., 923073017101)</p>
-                </div>
-                <div>
-                    <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Name (Optional)</label>
-                    <input type="text" id="name" name="name"
-                           class="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                           placeholder="John Doe">
-                </div>
-                <div class="flex items-center">
-                    <input type="checkbox" id="active" name="active" checked
-                           class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                    <label for="active" class="ml-2 text-sm text-slate-700">Active (will receive messages)</label>
-                </div>
-                <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700">
-                    Add Recipient
-                </button>
-            </form>
+      
+        {{-- Manual Add CTA --}}
+        <div class="order-3 lg:order-2 rounded-2xl border border-slate-200 bg-white px-6 py-12 shadow-sm flex items-center justify-center">
+            <button id="open-add-recipient-modal"
+                class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700 transition">
+                + Add Recipient
+            </button>
         </div>
     </div>
 
@@ -70,17 +44,17 @@
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-slate-800">Recipients List</h3>
             <div class="text-sm text-slate-600">
-                Total: <span class="font-semibold">{{ $totalCount ?? $recipients->total() }}</span> | 
-                Active: <span class="font-semibold text-green-600">{{ $activeCount ?? 0 }}</span>
+                Total: <span id="recipients-total-count" class="font-semibold">{{ $totalCount ?? $recipients->total() }}</span> | 
+                Active: <span id="recipients-active-count" class="font-semibold text-green-600">{{ $activeCount ?? 0 }}</span>
             </div>
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-slate-200">
             <div class="max-h-96 overflow-y-auto">
-                <table class="min-w-full divide-y divide-slate-200">
+                <table id="recipients-table" class="min-w-full divide-y divide-slate-200" data-base-url="{{ url('/whatsapp-recipients') }}" data-start-index="1">
                     <thead class="bg-slate-50 sticky top-0 z-10">
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-600 w-16">ID</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-600 w-16">#</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[150px]">Phone</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-600 min-w-[200px]">Name</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold tracking-wide text-slate-600 w-24">Status</th>
@@ -89,14 +63,20 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100 bg-white" id="recipients-tbody">
                         @forelse($recipients ?? [] as $recipient)
-                            <tr data-id="{{ $recipient->id }}" class="hover:bg-indigo-50/40 transition-colors">
-                                <td class="px-4 py-3 text-sm text-slate-700 font-medium">{{ $recipient->id }}</td>
+                            <tr 
+                                data-recipient-id="{{ $recipient->id }}"
+                                data-active="{{ $recipient->active ? 1 : 0 }}"
+                                data-phone="{{ $recipient->phone }}"
+                                data-name="{{ $recipient->name }}"
+                                data-display-index="{{ $loop->iteration }}"
+                                class="recipient-row">
+                                <td class="px-4 py-3 text-sm text-slate-700 font-medium recipient-index-cell">{{ $loop->iteration }}</td>
                                 <td class="px-4 py-3 text-sm text-slate-800 font-mono">{{ $recipient->phone }}</td>
                                 <td class="px-4 py-3 text-sm text-slate-700">{{ $recipient->name ?? '—' }}</td>
                                 <td class="px-4 py-3 text-sm">
                                     <button 
                                         class="toggle-active-btn inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors
-                                            {{ $recipient->active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}"
+                                            {{ $recipient->active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200' }}"
                                         data-id="{{ $recipient->id }}"
                                         data-url="{{ route('whatsapp-recipients.toggle-active', $recipient->id) }}">
                                         {{ $recipient->active ? 'Active' : 'Inactive' }}
@@ -139,6 +119,20 @@
     </div>
 </section>
 
-{{-- Edit Modal --}}
+{{-- Modals --}}
 @include('modal.edit-recipient')
+@include('modal.whatsapp-recipient-add')
+
+{{-- Overlay --}}
+<div id="recipients-overlay" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50">
+    <div class="flex h-full w-full items-center justify-center">
+        <div class="rounded-2xl bg-white px-8 py-6 shadow-2xl flex flex-col items-center gap-3 text-slate-700">
+            <svg class="h-8 w-8 text-indigo-600 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p id="recipients-overlay-text" class="text-sm font-medium">Processing...</p>
+        </div>
+    </div>
+</div>
 

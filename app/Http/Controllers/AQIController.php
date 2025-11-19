@@ -79,7 +79,7 @@ class AQIController extends Controller
         $settings = Settings::first();
         
         // ✅ get WhatsApp recipients for recipients tab
-        $recipients = WhatsappRecipient::orderBy('created_at', 'desc')->paginate(20);
+        $recipients = WhatsappRecipient::orderBy('id')->paginate(20);
         $totalCount = WhatsappRecipient::count();
         $activeCount = WhatsappRecipient::where('active', true)->count();
 

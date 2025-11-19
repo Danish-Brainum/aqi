@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
     
     // WhatsApp Recipients Management
     Route::get('/whatsapp-recipients', [WhatsappRecipientController::class, 'index'])->name('whatsapp-recipients.index');
+    Route::get('/whatsapp-recipients/list', [WhatsappRecipientController::class, 'list'])->name('whatsapp-recipients.list');
     Route::post('/whatsapp-recipients', [WhatsappRecipientController::class, 'store'])->name('whatsapp-recipients.store');
     Route::get('/whatsapp-recipients/{id}', [WhatsappRecipientController::class, 'show'])->name('whatsapp-recipients.show');
     Route::put('/whatsapp-recipients/{id}', [WhatsappRecipientController::class, 'update'])->name('whatsapp-recipients.update');

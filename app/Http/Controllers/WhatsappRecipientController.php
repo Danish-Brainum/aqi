@@ -15,7 +15,7 @@ class WhatsappRecipientController extends Controller
      */
     public function index()
     {
-        $recipients = WhatsappRecipient::orderBy('created_at', 'desc')->paginate(20);
+        $recipients = WhatsappRecipient::orderBy('id')->paginate(20);
         
         // Get counts for display
         $totalCount = WhatsappRecipient::count();
@@ -35,10 +35,13 @@ class WhatsappRecipientController extends Controller
         ]);
 
         try {
+            // Handle active checkbox - check if it's in the request and is true
+            $active = $request->has('active') && ($request->active === true || $request->active === 'true' || $request->active === 1 || $request->active === '1');
+            
             $recipient = WhatsappRecipient::create([
                 'phone' => $request->phone,
                 'name' => $request->name,
-                'active' => $request->has('active') ? true : false,
+                'active' => $active,
             ]);
 
             return response()->json([
@@ -67,16 +70,20 @@ class WhatsappRecipientController extends Controller
 
         try {
             $recipient = WhatsappRecipient::findOrFail($id);
+            
+            // Handle active checkbox - check if it's in the request and is true
+            $active = $request->has('active') && ($request->active === true || $request->active === 'true' || $request->active === 1 || $request->active === '1');
+            
             $recipient->update([
                 'phone' => $request->phone,
                 'name' => $request->name,
-                'active' => $request->has('active') ? true : false,
+                'active' => $active,
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Recipient updated successfully!',
-                'recipient' => $recipient
+                'recipient' => $recipient->fresh()
             ]);
         } catch (Exception $e) {
             Log::error('Error updating recipient: ' . $e->getMessage());
@@ -94,11 +101,13 @@ class WhatsappRecipientController extends Controller
     {
         try {
             $recipient = WhatsappRecipient::findOrFail($id);
+            $wasActive = $recipient->active;
             $recipient->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Recipient deleted successfully!'
+                'message' => 'Recipient deleted successfully!',
+                'was_active' => $wasActive
             ]);
         } catch (Exception $e) {
             Log::error('Error deleting recipient: ' . $e->getMessage());
@@ -157,7 +166,10 @@ class WhatsappRecipientController extends Controller
                 $missing = array_values(array_diff($required, $headers));
                 
                 if (!empty($missing)) {
-                    return back()->with('error', 'Invalid CSV headers. Required: Phone (optional: Name)');
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Invalid CSV headers. Required: Phone (optional: Name)'
+                    ], 400);
                 }
 
                 $records = $csv->getRecords();
@@ -177,6 +189,11 @@ class WhatsappRecipientController extends Controller
 
                     // Clean phone number (remove spaces, dashes, etc.)
                     $phone = preg_replace('/[^0-9]/', '', $phone);
+
+                    if (empty($phone)) {
+                        $skipped++;
+                        continue;
+                    }
 
                     try {
                         WhatsappRecipient::updateOrCreate(
@@ -198,14 +215,25 @@ class WhatsappRecipientController extends Controller
                     $message .= ", skipped {$skipped} duplicate(s) or invalid row(s)";
                 }
 
-                return back()->with('success', $message);
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'imported' => $imported,
+                    'skipped' => $skipped
+                ]);
             } else {
                 // Handle Excel files (xlsx, xls)
-                return back()->with('error', 'Excel file support coming soon. Please use CSV format.');
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Excel file support coming soon. Please use CSV format.'
+                ], 400);
             }
         } catch (Exception $e) {
             Log::error('Error uploading recipients CSV: ' . $e->getMessage());
-            return back()->with('error', 'Failed to process file: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to process file: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -225,6 +253,30 @@ class WhatsappRecipientController extends Controller
                 'success' => false,
                 'message' => 'Recipient not found'
             ], 404);
+        }
+    }
+
+    /**
+     * Get all recipients as JSON (for AJAX table refresh)
+     */
+    public function list()
+    {
+        try {
+            $recipients = WhatsappRecipient::orderBy('id')->get();
+            $totalCount = WhatsappRecipient::count();
+            $activeCount = WhatsappRecipient::where('active', true)->count();
+
+            return response()->json([
+                'success' => true,
+                'recipients' => $recipients,
+                'totalCount' => $totalCount,
+                'activeCount' => $activeCount
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch recipients: ' . $e->getMessage()
+            ], 500);
         }
     }
 }
