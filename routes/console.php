@@ -34,8 +34,8 @@ try {
         : Carbon::parse('18:00');
 
     // Calculate times 2 hours before morning and evening
-    $morningUpdateTime = $morningTime->copy()->subHours(2)->format('H:i');
-    $eveningUpdateTime = $eveningTime->copy()->subHours(2)->format('H:i');
+    $morningUpdateTime = $morningTime->copy()->subMinutes(40)->format('H:i');
+    $eveningUpdateTime = $eveningTime->copy()->subMinutes(40)->format('H:i');
 
     // Schedule AQI fetch 2 hours before morning time
     Schedule::command('aqi:fetch-all')
