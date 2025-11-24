@@ -384,23 +384,45 @@ class AQIController extends Controller
 
     public function download()
     {
-        // Always load fresh from database to ensure we get actual database IDs
-        $csvRecords = CSV::all();
-        
-        if ($csvRecords->isEmpty()) {
-            return redirect()->route('home')->with('error', 'No results available to download.');
+        // Get data from session first (includes unsaved changes)
+        $output = session('aqi_results', []);
+
+        // If session is empty, load from database
+        if (empty($output)) {
+            $csvRecords = CSV::all();
+            
+            if ($csvRecords->isEmpty()) {
+                return redirect()->route('home')->with('error', 'No results available to download.');
+            }
+
+            $output = $csvRecords->map(function ($row) {
+                return [
+                    'id'      => $row->id, // Actual database ID
+                    'name'    => $row->name,
+                    'email'   => $row->email,
+                    'city'    => $row->city,
+                    'phone'   => $row->phone,
+                    'aqi'     => $row->aqi,
+                    'message' => $row->message,
+                ];
+            })->toArray();
         }
 
-        // Map to array with actual database IDs (no display_id)
-        $outputForDownload = $csvRecords->map(function ($row) {
+        // Remove display_id and ensure we use actual database ID (not display_id)
+        $outputForDownload = collect($output)->map(function ($row) {
+            // Remove display_id if it exists
+            unset($row['display_id']);
+            
+            // Ensure 'id' is the actual database ID (not display_id)
+            // If id doesn't exist or is null, it might be a new unsaved record
             return [
-                'id'      => $row->id, // Actual database ID
-                'name'    => $row->name,
-                'email'   => $row->email,
-                'city'    => $row->city,
-                'phone'   => $row->phone,
-                'aqi'     => $row->aqi,
-                'message' => $row->message,
+                'id'      => $row['id'] ?? null, // Actual database ID (null for new unsaved records)
+                'name'    => $row['name'] ?? '',
+                'email'   => $row['email'] ?? '',
+                'city'    => $row['city'] ?? '',
+                'phone'   => $row['phone'] ?? '',
+                'aqi'     => $row['aqi'] ?? null,
+                'message' => $row['message'] ?? '',
             ];
         })->toArray();
 
