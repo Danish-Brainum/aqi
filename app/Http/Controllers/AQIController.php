@@ -585,42 +585,102 @@ class AQIController extends Controller
 
     public function sendEmails(Request $request)
     {
-        // Try to get results from session
-        $results = session('aqi_results', []);
+        // Get all records from CSV table (similar to how WhatsApp gets from Cities table)
+        $csvRecords = CSV::all();
 
-        // If session is empty or null, load from AQI model
-        if (empty($results)) {
-            $results = AQI::whereNotNull('email')
-                ->get(['email', 'message'])
-                ->toArray();
+        if ($csvRecords->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'No records found in CSV table.']);
         }
 
-        // Prepare and clean valid email entries
-        $emails = collect($results)
-            ->filter(fn($item) => !empty($item['email']) && !empty($item['message']))
-            ->unique('email')
-            ->values();
+        $sentCount = 0;
+        $updatedCount = 0;
+        $errors = [];
 
-        if ($emails->isEmpty()) {
-            return response()->json(['success' => false, 'message' => 'No valid emails found.']);
-        }
-
-        // Loop and send emails
-        foreach ($emails as $email) {
+        // Process each CSV record
+        foreach ($csvRecords as $record) {
             try {
+                // Skip if email is empty
+                if (empty($record->email)) {
+                    continue;
+                }
+
+                // Get city name from CSV record
+                $cityName = $record->city;
+
+                // Get AQI value from Cities table (similar to WhatsApp)
+                $city = City::where('name', $cityName)->first();
+                
+                if ($city && $city->aqi !== null && is_numeric($city->aqi)) {
+                    // Update CSV record with AQI value from Cities table
+                    $aqi = (int) $city->aqi;
+                    
+                    // Generate message based on AQI value
+                    $message = $this->getMessage($aqi, $record->name, $cityName);
+                    
+                    // Update CSV record with latest AQI and message
+                    $record->update([
+                        'aqi' => $aqi,
+                        'message' => $message
+                    ]);
+                    
+                    $updatedCount++;
+                } else {
+                    // If city not found or AQI is null, use existing message or generate fallback
+                    if (empty($record->message)) {
+                        $message = "Hi {$record->name}, we couldn't retrieve air quality data for {$cityName}.";
+                        $record->update(['message' => $message]);
+                    } else {
+                        $message = $record->message;
+                    }
+                    // Note: AQI field is not updated if city not found - keeps existing value
+                }
+
+                // Send email with updated data
                 $data = [
-                    'email' => $email['email'],
-                    'message' => $email['message'],
+                    'email' => $record->email,
+                    'message' => $message,
                     'subject' => 'Mr. Pulmo — Caring for You', // Header as subject
                 ];
 
-                Mail::to($email['email'])->send(new AutoReportMail($data));
+                Mail::to($record->email)->send(new AutoReportMail($data));
+                $sentCount++;
+
+                $aqiValue = ($city && $city->aqi !== null) ? $city->aqi : 'N/A';
+                Log::info("✅ Email sent to {$record->email} for city {$cityName} with AQI: {$aqiValue}");
+
             } catch (\Exception $e) {
-                Log::error("Failed sending email to {$email['email']}: " . $e->getMessage());
+                $errors[] = "Failed sending email to {$record->email}: " . $e->getMessage();
+                Log::error("❌ Failed sending email to {$record->email}: " . $e->getMessage());
             }
         }
 
-        return response()->json(['success' => true, 'count' => $emails->count()]);
+        // Update session with updated CSV records
+        $updatedResults = CSV::all()->map(function ($row) {
+            return [
+                'id'      => $row->id,
+                'name'    => $row->name,
+                'email'   => $row->email,
+                'city'    => $row->city,
+                'phone'   => $row->phone,
+                'aqi'     => $row->aqi,
+                'message' => $row->message,
+            ];
+        })->toArray();
+        
+        session()->put('aqi_results', $updatedResults);
+
+        $response = [
+            'success' => true,
+            'count' => $sentCount,
+            'updated' => $updatedCount,
+            'message' => "Successfully sent {$sentCount} email(s). {$updatedCount} record(s) updated with latest AQI values from Cities table."
+        ];
+
+        if (!empty($errors)) {
+            $response['errors'] = $errors;
+        }
+
+        return response()->json($response);
     }
 
 
