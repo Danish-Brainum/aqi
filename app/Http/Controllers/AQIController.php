@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\EmailJob;
 use App\Jobs\FetchAqiJob;
 use App\Jobs\SendWhatsappMessageJob;
 use App\Mail\AutoReportMail;
@@ -592,7 +593,7 @@ class AQIController extends Controller
             return response()->json(['success' => false, 'message' => 'No records found in CSV table.']);
         }
 
-        $sentCount = 0;
+        $queuedCount = 0;
         $updatedCount = 0;
         $errors = [];
 
@@ -635,22 +636,16 @@ class AQIController extends Controller
                     // Note: AQI field is not updated if city not found - keeps existing value
                 }
 
-                // Send email with updated data
-                $data = [
-                    'email' => $record->email,
-                    'message' => $message,
-                    'subject' => 'Mr. Pulmo — Caring for You', // Header as subject
-                ];
-
-                Mail::to($record->email)->send(new AutoReportMail($data));
-                $sentCount++;
+                // Dispatch email job to queue (same as automated command)
+                dispatch(new EmailJob($record));
+                $queuedCount++;
 
                 $aqiValue = ($city && $city->aqi !== null) ? $city->aqi : 'N/A';
-                Log::info("✅ Email sent to {$record->email} for city {$cityName} with AQI: {$aqiValue}");
+                Log::info("✅ Queued email for {$record->email} (city: {$cityName}, AQI: {$aqiValue})");
 
             } catch (\Exception $e) {
-                $errors[] = "Failed sending email to {$record->email}: " . $e->getMessage();
-                Log::error("❌ Failed sending email to {$record->email}: " . $e->getMessage());
+                $errors[] = "Failed to queue email for {$record->email}: " . $e->getMessage();
+                Log::error("❌ Failed to queue email for {$record->email}: " . $e->getMessage());
             }
         }
 
@@ -671,9 +666,9 @@ class AQIController extends Controller
 
         $response = [
             'success' => true,
-            'count' => $sentCount,
+            'count' => $queuedCount,
             'updated' => $updatedCount,
-            'message' => "Successfully sent {$sentCount} email(s). {$updatedCount} record(s) updated with latest AQI values from Cities table."
+            'message' => "Successfully queued {$queuedCount} email(s) for sending. {$updatedCount} record(s) updated with latest AQI values from Cities table. Emails will be sent in the background via queue worker."
         ];
 
         if (!empty($errors)) {
@@ -682,7 +677,6 @@ class AQIController extends Controller
 
         return response()->json($response);
     }
-
 
     public function sendWhatsapp()
     {
