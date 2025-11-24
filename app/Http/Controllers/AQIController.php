@@ -384,15 +384,29 @@ class AQIController extends Controller
 
     public function download()
     {
-        $output = session('aqi_results', []);
-
-        if (empty($output)) {
+        // Always load fresh from database to ensure we get actual database IDs
+        $csvRecords = CSV::all();
+        
+        if ($csvRecords->isEmpty()) {
             return redirect()->route('home')->with('error', 'No results available to download.');
         }
 
+        // Map to array with actual database IDs (no display_id)
+        $outputForDownload = $csvRecords->map(function ($row) {
+            return [
+                'id'      => $row->id, // Actual database ID
+                'name'    => $row->name,
+                'email'   => $row->email,
+                'city'    => $row->city,
+                'phone'   => $row->phone,
+                'aqi'     => $row->aqi,
+                'message' => $row->message,
+            ];
+        })->toArray();
+
         $csv = Writer::createFromString('');
         $csv->insertOne(['id','name', 'email', 'city','phone','aqi', 'message']);
-        $csv->insertAll($output);
+        $csv->insertAll($outputForDownload);
 
         return response((string) $csv)
             ->header('Content-Type', 'text/csv')
@@ -781,8 +795,15 @@ class AQIController extends Controller
             Log::info('Upserting CSV records...');
 
 
+            // Remove display_id before saving to database (it's only for frontend display)
+            $resultsForDb = collect($results)->map(function ($row) {
+                return array_filter($row, function ($key) {
+                    return $key !== 'display_id'; // Exclude display_id from database save
+                }, ARRAY_FILTER_USE_KEY);
+            })->toArray();
+
             CSV::upsert(
-                $results,
+                $resultsForDb,
                 ['id'],
                 ['name','email', 'city', 'phone', 'aqi', 'message']
             );
