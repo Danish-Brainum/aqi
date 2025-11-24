@@ -47,9 +47,30 @@ export function initEditModal() {
         const cells = row.querySelectorAll("td");
         editIndex.value = row.dataset.id ?? "";
         editName.value = cells[1]?.textContent.trim() ?? "";
-        editEmail.value = cells[2]?.textContent.trim() ?? "";
+        
+        // Get email - check if it's in a truncate div
+        const emailCell = cells[2];
+        if (emailCell) {
+            const emailDiv = emailCell.querySelector('.truncate');
+            editEmail.value = emailDiv ? emailDiv.textContent.trim() : emailCell.textContent.trim();
+        }
+        
         editPhone.value = cells[4]?.textContent.trim() ?? "";
-        editMessage.value = cells[6]?.textContent.trim() ?? "";
+        
+        // Get full message from data attribute or title, not just truncated text
+        const messageCell = cells[6];
+        if (messageCell) {
+            const messageDiv = messageCell.querySelector('.message-cell');
+            if (messageDiv) {
+                // Get full message from data attribute or title
+                editMessage.value = messageDiv.getAttribute('data-full-message') || 
+                                   messageDiv.getAttribute('title') || 
+                                   messageDiv.textContent.trim() || '';
+            } else {
+                editMessage.value = messageCell.textContent.trim() ?? "";
+            }
+        }
+        
         openModal();
     });
 
@@ -85,9 +106,36 @@ export function initEditModal() {
                 if (row) {
                     const cells = row.querySelectorAll("td");
                     if (cells[1]) cells[1].textContent = data.name;
-                    if (cells[2]) cells[2].textContent = data.email;
+                    
+                    // Update email with truncation
+                    if (cells[2]) {
+                        const emailDiv = cells[2].querySelector('.truncate') || cells[2];
+                        emailDiv.textContent = data.email;
+                        if (emailDiv !== cells[2]) {
+                            emailDiv.setAttribute('title', data.email);
+                        }
+                    }
+                    
                     if (cells[4]) cells[4].textContent = data.phone;
-                    if (cells[6]) cells[6].textContent = data.message;
+                    
+                    // Update message with proper truncation structure
+                    if (cells[6]) {
+                        // Escape HTML to prevent XSS
+                        const escapeHtml = (text) => {
+                            const div = document.createElement('div');
+                            div.textContent = text;
+                            return div.innerHTML;
+                        };
+                        
+                        const escapedMessage = escapeHtml(data.message || 'N/A');
+                        cells[6].innerHTML = `
+                            <div class="message-cell max-w-[300px] truncate" 
+                                 title="${escapedMessage}"
+                                 data-full-message="${escapedMessage}">
+                                ${escapedMessage}
+                            </div>
+                        `;
+                    }
                 }
                 closeModalWithAnimation();
                 showAlert("Record updated successfully!", "success"); // ✅ Success alert

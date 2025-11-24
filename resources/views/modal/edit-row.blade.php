@@ -1,6 +1,6 @@
-<div id="editModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center">
+<div id="editModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
   <!-- Animated Modal Content -->
-  <div id="modalContent" class="bg-white rounded-lg w-96 transform opacity-0 scale-95 transition-all duration-300 ease-out shadow-lg">
+  <div id="modalContent" class="bg-white rounded-lg w-96 max-w-[90vw] max-h-[90vh] overflow-y-auto transform opacity-0 scale-95 transition-all duration-300 ease-out shadow-lg z-50">
     
     <!-- Header -->
     <div class="flex items-center justify-between border-b px-6 py-3">
