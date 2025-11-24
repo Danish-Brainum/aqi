@@ -50,6 +50,12 @@ export function initEmailModal() {
         const data = await res.json();
         if(data.success){
             alert(`✅ Emails sent to ${data.count} recipients.`);
+            // Refresh the results table to show updated AQI values
+            if (typeof window.refreshResultsTable === 'function') {
+                setTimeout(() => {
+                    window.refreshResultsTable();
+                }, 500); // Small delay to ensure data is saved
+            }
         } else {
             alert(`⚠️ ${data.message}`);
         }

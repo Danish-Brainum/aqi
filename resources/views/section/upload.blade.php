@@ -143,7 +143,7 @@ class="rounded-full border border-slate-300 px-4 py-2 text-sm shadow-sm focus:ou
           <tbody class="divide-y divide-slate-100 bg-white">
             @forelse($results as $i => $row)
               <tr class="hover:bg-indigo-50/40 transition-colors" data-id="{{ $row['id'] }}">
-                <td class="px-3 py-2.5 text-sm text-slate-700 font-medium">{{ $row['id'] }}</td>
+                <td class="px-3 py-2.5 text-sm text-slate-700 font-medium">{{ $row['display_id'] ?? ($i + 1) }}</td>
                 <td class="px-3 py-2.5 text-sm text-slate-800">{{ $row['name'] }}</td>
                 <td class="px-3 py-2.5 text-sm text-slate-700">
                   <div class="truncate max-w-[180px]" title="{{ $row['email'] }}">{{ $row['email'] }}</div>

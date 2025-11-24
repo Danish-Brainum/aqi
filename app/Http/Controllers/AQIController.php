@@ -36,16 +36,23 @@ class AQIController extends Controller
 
         if (empty($results)) {
             // ✅ fetch from DB if session is empty
-            $results = CSV::all()->map(function ($row) {
+            $results = CSV::all()->map(function ($row, $index) {
                 return [
-                    'id'      => $row->id,
-                    'name'    => $row->name,
-                    'email'   => $row->email,
-                    'city'    => $row->city,
-                    'phone'   => $row->phone,
-                    'aqi'     => $row->aqi,
-                    'message' => $row->message,
+                    'id'         => $row->id, // Keep database ID for operations
+                    'display_id' => $index + 1, // Sequential ID starting from 1
+                    'name'       => $row->name,
+                    'email'     => $row->email,
+                    'city'      => $row->city,
+                    'phone'     => $row->phone,
+                    'aqi'       => $row->aqi,
+                    'message'   => $row->message,
                 ];
+            })->toArray();
+        } else {
+            // Add sequential display_id to existing session results
+            $results = collect($results)->map(function ($row, $index) {
+                $row['display_id'] = $index + 1;
+                return $row;
             })->toArray();
         }
 
@@ -185,6 +192,13 @@ class AQIController extends Controller
 
         // ✅ Append & store in session
         $results[] = $record;
+        
+        // Recalculate display_id for all records to maintain sequential order
+        $results = collect($results)->map(function ($row, $index) {
+            $row['display_id'] = $index + 1;
+            return $row;
+        })->toArray();
+        
         session(['aqi_results' => $results]);
 
         return back()->with('results', $results)->with('success', 'Record added successfully.');
@@ -650,15 +664,16 @@ class AQIController extends Controller
         }
 
         // Update session with updated CSV records
-        $updatedResults = CSV::all()->map(function ($row) {
+        $updatedResults = CSV::all()->map(function ($row, $index) {
             return [
-                'id'      => $row->id,
-                'name'    => $row->name,
-                'email'   => $row->email,
-                'city'    => $row->city,
-                'phone'   => $row->phone,
-                'aqi'     => $row->aqi,
-                'message' => $row->message,
+                'id'         => $row->id, // Keep database ID for operations
+                'display_id' => $index + 1, // Sequential ID starting from 1
+                'name'       => $row->name,
+                'email'     => $row->email,
+                'city'      => $row->city,
+                'phone'     => $row->phone,
+                'aqi'       => $row->aqi,
+                'message'   => $row->message,
             ];
         })->toArray();
         
@@ -676,6 +691,34 @@ class AQIController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * Get CSV data as JSON for frontend table refresh
+     */
+    public function getCsvData(Request $request)
+    {
+        // Get all records from CSV table
+        $results = CSV::all()->map(function ($row, $index) {
+            return [
+                'id'         => $row->id, // Keep database ID for operations
+                'display_id' => $index + 1, // Sequential ID starting from 1
+                'name'       => $row->name,
+                'email'     => $row->email,
+                'city'      => $row->city,
+                'phone'     => $row->phone,
+                'aqi'       => $row->aqi,
+                'message'   => $row->message,
+            ];
+        })->toArray();
+
+        // Update session with latest data
+        session()->put('aqi_results', $results);
+
+        return response()->json([
+            'success' => true,
+            'results' => $results
+        ]);
     }
 
     public function sendWhatsapp()
