@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Jobs\FetchAqiJob;
 use App\Models\City;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AqiFetchService
@@ -41,12 +42,18 @@ class AqiFetchService
         foreach ($cities as $city) {
             // Dispatch job with delay to ensure sequential processing
             // Each job is spaced 1 minute (60 seconds) apart to respect API rate limit (5 requests/minute)
-            dispatch(new FetchAqiJob($city->name, $city->state))
-                ->delay(now()->addMinutes($delayMinutes))
-                ->onQueue('aqi-fetch'); // Use a dedicated queue for better control
+            try {
+                dispatch(new FetchAqiJob($city->name, $city->state))
+                    ->delay(now()->addMinutes($delayMinutes))
+                    ->onQueue('aqi-fetch'); // Use a dedicated queue for better control
 
-            $delayMinutes += 1; // Space each job by 1 minute to respect API rate limit
-            $dispatchedCount++;
+                Log::info("📋 [AqiFetchService] Dispatched job for {$city->name}, {$city->state} with {$delayMinutes} minute delay");
+                
+                $delayMinutes += 1; // Space each job by 1 minute to respect API rate limit
+                $dispatchedCount++;
+            } catch (\Exception $e) {
+                Log::error("❌ [AqiFetchService] Failed to dispatch job for {$city->name}, {$city->state}: {$e->getMessage()}");
+            }
         }
 
         $estimatedTime = $dispatchedCount > 0 ? round($dispatchedCount * 1) : 0;
