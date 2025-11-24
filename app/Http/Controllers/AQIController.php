@@ -397,7 +397,7 @@ class AQIController extends Controller
 
             $output = $csvRecords->map(function ($row) {
                 return [
-                    'id'      => $row->id, // Actual database ID
+                    'id'      => $row->id,
                     'name'    => $row->name,
                     'email'   => $row->email,
                     'city'    => $row->city,
@@ -408,15 +408,15 @@ class AQIController extends Controller
             })->toArray();
         }
 
-        // Remove display_id and ensure we use actual database ID (not display_id)
-        $outputForDownload = collect($output)->map(function ($row) {
-            // Remove display_id if it exists
+        $outputCollection = collect($output)->values();
+
+        // Ensure we export sequential IDs (1..N) regardless of DB IDs
+        $outputForDownload = $outputCollection->map(function ($row, $index) {
+            // Remove display_id if present (purely a frontend helper)
             unset($row['display_id']);
-            
-            // Ensure 'id' is the actual database ID (not display_id)
-            // If id doesn't exist or is null, it might be a new unsaved record
+
             return [
-                'id'      => $row['id'] ?? null, // Actual database ID (null for new unsaved records)
+                'id'      => $index + 1, // Sequential runtime ID
                 'name'    => $row['name'] ?? '',
                 'email'   => $row['email'] ?? '',
                 'city'    => $row['city'] ?? '',
