@@ -49,16 +49,21 @@
     <div class="flex gap-2 items-center">
       @php
         // Parse morning time from database (format: HH:MM:SS or HH:MM)
-        $morningHour = '01';
+        // 12 AM = 00:00, 1-11 AM = 01:00-11:00
+        // Display: 0 means 12 AM, 1-11 means 1-11 AM
+        $morningHour = '00';
         $morningMinute = '00';
         if (isset($settings) && $settings && $settings->morning_time) {
           $timeParts = explode(':', $settings->morning_time);
-          $morningHour = isset($timeParts[0]) ? sprintf('%02d', (int)$timeParts[0]) : '01';
+          $dbHour = isset($timeParts[0]) ? (int)$timeParts[0] : 0;
+          // For display: 00 = show as 0, 01-11 = show as 1-11
+          $morningHour = sprintf('%02d', $dbHour);
           $morningMinute = isset($timeParts[1]) ? sprintf('%02d', (int)$timeParts[1]) : '00';
         }
       @endphp
       <select id="morning_hour"
               class="w-1/2 bg-white text-gray-800 border border-gray-300 rounded-md px-2 py-1 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 cursor-pointer">
+        <option value="00" {{ $morningHour == '00' ? 'selected' : '' }}>0</option>
         @for ($h = 1; $h <= 11; $h++)
           <option value="{{ sprintf('%02d', $h) }}" {{ $morningHour == sprintf('%02d', $h) ? 'selected' : '' }}>{{ $h }}</option>
         @endfor
@@ -81,19 +86,26 @@
     <div class="flex gap-2 items-center">
       @php
         // Parse evening time from database (format: HH:MM:SS or HH:MM)
-        // Database stores 13-23 for PM hours, but we display 1-11
-        $eveningHour = '01';
+        // 12 PM = 12:00, 1-11 PM = 13:00-23:00
+        // Display: 0 means 12 PM, 1-11 means 1-11 PM
+        $eveningHour = '00';
         $eveningMinute = '00';
         if (isset($settings) && $settings && $settings->evening_time) {
           $timeParts = explode(':', $settings->evening_time);
-          $dbHour = isset($timeParts[0]) ? (int)$timeParts[0] : 13;
-          // Convert 24-hour format (13-23) to 12-hour format (1-11) for display
-          $eveningHour = $dbHour >= 13 ? sprintf('%02d', $dbHour - 12) : sprintf('%02d', $dbHour);
+          $dbHour = isset($timeParts[0]) ? (int)$timeParts[0] : 12;
+          // Convert 24-hour format to display format
+          // 12 = show as 0, 13-23 = show as 1-11
+          if ($dbHour == 12) {
+            $eveningHour = '00';
+          } else {
+            $eveningHour = sprintf('%02d', $dbHour - 12);
+          }
           $eveningMinute = isset($timeParts[1]) ? sprintf('%02d', (int)$timeParts[1]) : '00';
         }
       @endphp
       <select id="evening_hour"
               class="w-1/2 bg-white text-gray-800 border border-gray-300 rounded-md px-2 py-1 focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 cursor-pointer">
+        <option value="12" {{ $eveningHour == '00' ? 'selected' : '' }}>0</option>
         @for ($h = 1; $h <= 11; $h++)
           <option value="{{ sprintf('%02d', $h + 12) }}" {{ $eveningHour == sprintf('%02d', $h) ? 'selected' : '' }}>{{ $h }}</option>
         @endfor
