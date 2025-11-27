@@ -13,13 +13,6 @@ class EmailJob implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * The name of the queue the job should be sent to.
-     *
-     * @var string
-     */
-    public $queue = 'email';
-
     private $email;
     private $message;
     /**
@@ -27,6 +20,7 @@ class EmailJob implements ShouldQueue
      */
     public function __construct(CSV $record)
     {
+        $this->onQueue('email');
         $this->email = $record->email;
         $this->message = $record->message;
     }

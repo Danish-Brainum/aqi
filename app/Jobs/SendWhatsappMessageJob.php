@@ -16,13 +16,6 @@ class SendWhatsappMessageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * The name of the queue the job should be sent to.
-     *
-     * @var string
-     */
-    public $queue = 'whatsapp';
-
     protected $to;
     protected $city;
     protected $aqi;
@@ -30,7 +23,7 @@ class SendWhatsappMessageJob implements ShouldQueue
 
     public function __construct($to,  $name, $aqi, $message)
     {
-        // $this->to = $city->to;
+        $this->onQueue('whatsapp');
         $this->to = $to;
         $this->city = $name;
         $this->aqi = $aqi;
@@ -93,7 +86,7 @@ class SendWhatsappMessageJob implements ShouldQueue
     /**
      * Sanitize message text for WhatsApp template parameters
      * WhatsApp doesn't allow: newlines (\n), tabs (\t), or more than 4 consecutive spaces
-     * 
+     *
      * @param string $message
      * @return string
      */
