@@ -13,6 +13,13 @@ class EmailJob implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * The name of the queue the job should be sent to.
+     *
+     * @var string
+     */
+    public $queue = 'email';
+
     private $email;
     private $message;
     /**

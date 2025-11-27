@@ -16,6 +16,13 @@ class SendWhatsappMessageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    /**
+     * The name of the queue the job should be sent to.
+     *
+     * @var string
+     */
+    public $queue = 'whatsapp';
+
     protected $to;
     protected $city;
     protected $aqi;
