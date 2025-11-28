@@ -24,6 +24,12 @@
     <button data-tab="whatsapp-recipients" class="tab-btn rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:text-indigo-700 data-[active=true]:bg-white data-[active=true]:text-indigo-700 data-[active=true]:shadow">
       WhatsApp Recipients
     </button>
+    <button data-tab="incoming-messages" class="tab-btn rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:text-indigo-700 data-[active=true]:bg-white data-[active=true]:text-indigo-700 data-[active=true]:shadow relative">
+      Incoming Messages
+      @if(isset($unreadCount) && $unreadCount > 0)
+        <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">{{ $unreadCount }}</span>
+      @endif
+    </button>
   </div>
 </div>
 
@@ -32,5 +38,6 @@
 {{-- @include('section.custom-message') --}}
 @include('section.aqi_info')
 @include('section.whatsapp-recipients')
+@include('section.incoming-messages')
 @include('modal.edit-row')
 @endsection

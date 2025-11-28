@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\WhatsappRecipientController;
 use App\Http\Controllers\WhatsappWebhookController;
+use App\Http\Controllers\IncomingWhatsappMessageController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -36,6 +37,14 @@ Route::middleware('auth')->group(function () {
     Route::delete('/whatsapp-recipients/{id}', [WhatsappRecipientController::class, 'destroy'])->name('whatsapp-recipients.destroy');
     Route::post('/whatsapp-recipients/{id}/toggle-active', [WhatsappRecipientController::class, 'toggleActive'])->name('whatsapp-recipients.toggle-active');
     Route::post('/whatsapp-recipients/upload-csv', [WhatsappRecipientController::class, 'uploadCsv'])->name('whatsapp-recipients.upload-csv');
+    
+    // Incoming WhatsApp Messages
+    Route::get('/incoming-messages', [IncomingWhatsappMessageController::class, 'index'])->name('incoming-messages.index');
+    Route::get('/incoming-messages/list', [IncomingWhatsappMessageController::class, 'list'])->name('incoming-messages.list');
+    Route::post('/incoming-messages/{id}/mark-as-read', [IncomingWhatsappMessageController::class, 'markAsRead'])->name('incoming-messages.mark-as-read');
+    Route::post('/incoming-messages/mark-all-as-read', [IncomingWhatsappMessageController::class, 'markAllAsRead'])->name('incoming-messages.mark-all-as-read');
+    Route::delete('/incoming-messages/{id}', [IncomingWhatsappMessageController::class, 'destroy'])->name('incoming-messages.destroy');
+    
     // Profile
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.show');
     Route::post('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');

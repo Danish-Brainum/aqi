@@ -90,6 +90,10 @@ class AQIController extends Controller
         $recipients = WhatsappRecipient::orderBy('id')->paginate(20);
         $totalCount = WhatsappRecipient::count();
         $activeCount = WhatsappRecipient::where('active', true)->count();
+        
+        // ✅ get incoming WhatsApp messages
+        $incomingMessages = \App\Models\IncomingWhatsappMessage::orderBy('created_at', 'desc')->paginate(20);
+        $unreadCount = \App\Models\IncomingWhatsappMessage::where('read', false)->count();
 
         return view('dashboard', [
             'results' => $paginatedResults,
@@ -100,7 +104,9 @@ class AQIController extends Controller
             'settings' => $settings,
             'recipients' => $recipients,
             'totalCount' => $totalCount,
-            'activeCount' => $activeCount
+            'activeCount' => $activeCount,
+            'incomingMessages' => $incomingMessages,
+            'unreadCount' => $unreadCount
         ]);
     }
 

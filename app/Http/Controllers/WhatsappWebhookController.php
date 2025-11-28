@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\IncomingWhatsappMessage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
@@ -121,40 +122,47 @@ class WhatsappWebhookController extends Controller
             'timestamp' => $timestamp,
         ]);
 
+        // Store raw message data for reference
+        $rawData = json_encode(['message' => $message, 'value' => $value]);
+
         // Handle different message types
         switch ($type) {
             case 'text':
                 $text = $message['text']['body'] ?? '';
-                $this->handleTextMessage($from, $text, $messageId, $timestamp);
+                $this->handleTextMessage($from, $text, $messageId, $timestamp, $rawData);
                 break;
 
             case 'image':
                 $imageId = $message['image']['id'] ?? null;
                 $caption = $message['image']['caption'] ?? null;
-                $this->handleImageMessage($from, $imageId, $caption, $messageId, $timestamp);
+                $mimeType = $message['image']['mime_type'] ?? null;
+                $this->handleImageMessage($from, $imageId, $caption, $messageId, $timestamp, $mimeType, $rawData);
                 break;
 
             case 'document':
                 $documentId = $message['document']['id'] ?? null;
                 $caption = $message['document']['caption'] ?? null;
-                $this->handleDocumentMessage($from, $documentId, $caption, $messageId, $timestamp);
+                $mimeType = $message['document']['mime_type'] ?? null;
+                $this->handleDocumentMessage($from, $documentId, $caption, $messageId, $timestamp, $mimeType, $rawData);
                 break;
 
             case 'audio':
                 $audioId = $message['audio']['id'] ?? null;
-                $this->handleAudioMessage($from, $audioId, $messageId, $timestamp);
+                $mimeType = $message['audio']['mime_type'] ?? null;
+                $this->handleAudioMessage($from, $audioId, $messageId, $timestamp, $mimeType, $rawData);
                 break;
 
             case 'video':
                 $videoId = $message['video']['id'] ?? null;
                 $caption = $message['video']['caption'] ?? null;
-                $this->handleVideoMessage($from, $videoId, $caption, $messageId, $timestamp);
+                $mimeType = $message['video']['mime_type'] ?? null;
+                $this->handleVideoMessage($from, $videoId, $caption, $messageId, $timestamp, $mimeType, $rawData);
                 break;
 
             case 'location':
                 $latitude = $message['location']['latitude'] ?? null;
                 $longitude = $message['location']['longitude'] ?? null;
-                $this->handleLocationMessage($from, $latitude, $longitude, $messageId, $timestamp);
+                $this->handleLocationMessage($from, $latitude, $longitude, $messageId, $timestamp, $rawData);
                 break;
 
             default:
@@ -166,7 +174,7 @@ class WhatsappWebhookController extends Controller
     /**
      * Handle incoming text message
      */
-    private function handleTextMessage(string $from, string $text, ?string $messageId, ?string $timestamp)
+    private function handleTextMessage(string $from, string $text, ?string $messageId, ?string $timestamp, ?string $rawData = null)
     {
         Log::info('💬 Text Message Received', [
             'from' => $from,
@@ -174,9 +182,25 @@ class WhatsappWebhookController extends Controller
             'message_id' => $messageId,
         ]);
 
+        // Save message to database
+        try {
+            IncomingWhatsappMessage::updateOrCreate(
+                ['message_id' => $messageId],
+                [
+                    'from' => $from,
+                    'type' => 'text',
+                    'message' => $text,
+                    'timestamp' => $timestamp ?? time(),
+                    'raw_data' => $rawData,
+                    'read' => false,
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error saving message to database: ' . $e->getMessage());
+        }
+
         // TODO: Add your business logic here
         // Examples:
-        // - Save message to database
         // - Process commands (e.g., "help", "subscribe", "unsubscribe")
         // - Auto-reply to messages
         // - Forward to other services
@@ -188,7 +212,7 @@ class WhatsappWebhookController extends Controller
     /**
      * Handle incoming image message
      */
-    private function handleImageMessage(string $from, ?string $imageId, ?string $caption, ?string $messageId, ?string $timestamp)
+    private function handleImageMessage(string $from, ?string $imageId, ?string $caption, ?string $messageId, ?string $timestamp, ?string $mimeType = null, ?string $rawData = null)
     {
         Log::info('🖼️ Image Message Received', [
             'from' => $from,
@@ -197,13 +221,30 @@ class WhatsappWebhookController extends Controller
             'message_id' => $messageId,
         ]);
 
-        // TODO: Add your business logic here
+        // Save message to database
+        try {
+            IncomingWhatsappMessage::updateOrCreate(
+                ['message_id' => $messageId],
+                [
+                    'from' => $from,
+                    'type' => 'image',
+                    'message' => $caption,
+                    'media_id' => $imageId,
+                    'mime_type' => $mimeType,
+                    'timestamp' => $timestamp ?? time(),
+                    'raw_data' => $rawData,
+                    'read' => false,
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error saving image message to database: ' . $e->getMessage());
+        }
     }
 
     /**
      * Handle incoming document message
      */
-    private function handleDocumentMessage(string $from, ?string $documentId, ?string $caption, ?string $messageId, ?string $timestamp)
+    private function handleDocumentMessage(string $from, ?string $documentId, ?string $caption, ?string $messageId, ?string $timestamp, ?string $mimeType = null, ?string $rawData = null)
     {
         Log::info('📄 Document Message Received', [
             'from' => $from,
@@ -212,13 +253,30 @@ class WhatsappWebhookController extends Controller
             'message_id' => $messageId,
         ]);
 
-        // TODO: Add your business logic here
+        // Save message to database
+        try {
+            IncomingWhatsappMessage::updateOrCreate(
+                ['message_id' => $messageId],
+                [
+                    'from' => $from,
+                    'type' => 'document',
+                    'message' => $caption,
+                    'media_id' => $documentId,
+                    'mime_type' => $mimeType,
+                    'timestamp' => $timestamp ?? time(),
+                    'raw_data' => $rawData,
+                    'read' => false,
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error saving document message to database: ' . $e->getMessage());
+        }
     }
 
     /**
      * Handle incoming audio message
      */
-    private function handleAudioMessage(string $from, ?string $audioId, ?string $messageId, ?string $timestamp)
+    private function handleAudioMessage(string $from, ?string $audioId, ?string $messageId, ?string $timestamp, ?string $mimeType = null, ?string $rawData = null)
     {
         Log::info('🎵 Audio Message Received', [
             'from' => $from,
@@ -226,13 +284,29 @@ class WhatsappWebhookController extends Controller
             'message_id' => $messageId,
         ]);
 
-        // TODO: Add your business logic here
+        // Save message to database
+        try {
+            IncomingWhatsappMessage::updateOrCreate(
+                ['message_id' => $messageId],
+                [
+                    'from' => $from,
+                    'type' => 'audio',
+                    'media_id' => $audioId,
+                    'mime_type' => $mimeType,
+                    'timestamp' => $timestamp ?? time(),
+                    'raw_data' => $rawData,
+                    'read' => false,
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error saving audio message to database: ' . $e->getMessage());
+        }
     }
 
     /**
      * Handle incoming video message
      */
-    private function handleVideoMessage(string $from, ?string $videoId, ?string $caption, ?string $messageId, ?string $timestamp)
+    private function handleVideoMessage(string $from, ?string $videoId, ?string $caption, ?string $messageId, ?string $timestamp, ?string $mimeType = null, ?string $rawData = null)
     {
         Log::info('🎥 Video Message Received', [
             'from' => $from,
@@ -241,13 +315,30 @@ class WhatsappWebhookController extends Controller
             'message_id' => $messageId,
         ]);
 
-        // TODO: Add your business logic here
+        // Save message to database
+        try {
+            IncomingWhatsappMessage::updateOrCreate(
+                ['message_id' => $messageId],
+                [
+                    'from' => $from,
+                    'type' => 'video',
+                    'message' => $caption,
+                    'media_id' => $videoId,
+                    'mime_type' => $mimeType,
+                    'timestamp' => $timestamp ?? time(),
+                    'raw_data' => $rawData,
+                    'read' => false,
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error saving video message to database: ' . $e->getMessage());
+        }
     }
 
     /**
      * Handle incoming location message
      */
-    private function handleLocationMessage(string $from, ?float $latitude, ?float $longitude, ?string $messageId, ?string $timestamp)
+    private function handleLocationMessage(string $from, ?float $latitude, ?float $longitude, ?string $messageId, ?string $timestamp, ?string $rawData = null)
     {
         Log::info('📍 Location Message Received', [
             'from' => $from,
@@ -256,7 +347,23 @@ class WhatsappWebhookController extends Controller
             'message_id' => $messageId,
         ]);
 
-        // TODO: Add your business logic here
+        // Save message to database
+        try {
+            IncomingWhatsappMessage::updateOrCreate(
+                ['message_id' => $messageId],
+                [
+                    'from' => $from,
+                    'type' => 'location',
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
+                    'timestamp' => $timestamp ?? time(),
+                    'raw_data' => $rawData,
+                    'read' => false,
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Error saving location message to database: ' . $e->getMessage());
+        }
     }
 
     /**
