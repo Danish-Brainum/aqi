@@ -39,7 +39,7 @@ return [
         'token' => env('WHATSAPP_CLOUD_TOKEN'),
         'phoneNumberId' => env('WHATSAPP_PHONE_NUMBER_ID'),
         'version' => env('WHATSAPP_API_VERSION'),
-        'template_name' => env('WHATSAPP_TEMPLATE_NAME', 'aqi_notification'),
+        'template_name' => env('WHATSAPP_TEMPLATE_NAME', 'pulmonol'),
         'template_language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'en'),
     ],
     'IQAir' => [
