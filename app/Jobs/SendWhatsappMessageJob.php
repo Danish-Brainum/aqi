@@ -35,20 +35,20 @@ class SendWhatsappMessageJob implements ShouldQueue
 
         try {
             // Template format:
-            // Mr. Pulmo 🌿 — Caring for You and {{1}}
-            // {{2}}
+            // The air quality index in {{1}} is {{2}}, {{3}}.
+            //
             // *Your breath matters to us.*
-            // Powered by Pulmo, CC
-            // Where {{1}} = city name, {{2}} = message
+            // Where {{1}} = city name, {{2}} = AQI value, {{3}} = message
             
             // Template name - update in .env as WHATSAPP_TEMPLATE_NAME
-            $template = trim(config('services.whatsapp.template_name', 'aqi_notification'));
+            $template = trim(config('services.whatsapp.template_name', 'pulmonol'));
             $language = config('services.whatsapp.template_language', 'en');
 
             // Sanitize message text for WhatsApp template parameters
             // WhatsApp doesn't allow: newlines (\n), tabs (\t), or more than 4 consecutive spaces
             $sanitizedMessage = $this->sanitizeMessageForWhatsApp($this->message ?? '');
             $sanitizedCity = $this->sanitizeMessageForWhatsApp($this->city ?? '');
+            $sanitizedAqi = (string) ($this->aqi ?? '');
 
             $components = [
                 [
@@ -56,11 +56,15 @@ class SendWhatsappMessageJob implements ShouldQueue
                     "parameters" => [
                         [
                             "type" => "text",
-                            "text" => $sanitizedCity,
+                            "text" => $sanitizedCity,  // {{1}} = city
                         ],
                         [
                             "type" => "text",
-                            "text" => $sanitizedMessage,
+                            "text" => $sanitizedAqi,   // {{2}} = AQI
+                        ],
+                        [
+                            "type" => "text",
+                            "text" => $sanitizedMessage, // {{3}} = message
                         ],
                     ],
                 ],

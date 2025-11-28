@@ -335,19 +335,20 @@ class AQIController extends Controller
             ->value('message');
 
         // If no city-specific message, use default
+        // Note: City and AQI are now separate template parameters, so message should not include them
         if (empty($message)) {
             if ($aqi <= 50) {
-                $message = "the air quality in {$cityName} is Good 😊 (AQI: {$aqi}). Enjoy your day!";
+                $message = "which is Good. Today's air is fresh and safe — a great day to enjoy the outdoors! Let's keep it that way — choose public transport, plant trees, and protect clean air.";
             } elseif ($aqi <= 100) {
-                $message = "the air quality in {$cityName} is Moderate 🙂 (AQI: {$aqi}). It's generally okay.";
+                $message = "which is Moderate. Air quality is acceptable, but may affect sensitive individuals. If you feel discomfort, take it easy and stay hydrated. Let's reduce car use and support cleaner choices.";
             } elseif ($aqi <= 150) {
-                $message = "the air quality in {$cityName} is Unhealthy for Sensitive Groups 😷 (AQI: {$aqi}). Be careful if you have breathing issues.";
+                $message = "which is Unhealthy for Sensitive Groups. Today's air may cause coughing or irritation for children and elders. Limit outdoor play, wear a mask if needed, and keep windows closed. Let's care for our loved ones together.";
             } elseif ($aqi <= 200) {
-                $message = "the air quality in {$cityName} is Unhealthy ❌ (AQI: {$aqi}). Try to limit outdoor activity.";
+                $message = "which is Unhealthy. Air quality is poor today. Everyone may feel its effects. Stay indoors when possible, use air purifiers, and avoid traffic-heavy areas. Let's protect our lungs and help others do the same.";
             } elseif ($aqi <= 300) {
-                $message = "the air quality in {$cityName} is Very Unhealthy ⚠️ (AQI: {$aqi}). Consider staying indoors.";
+                $message = "which is Very Unhealthy. Breathing this air can be harmful. Let's take extra care today. Seal windows, avoid outdoor exposure, and check on vulnerable family members. Together, we can breathe safer.";
             } else {
-                $message = "the air quality in {$cityName} is Hazardous ☠️ (AQI: {$aqi}). Stay safe and avoid going outside.";
+                $message = "which is Hazardous. This is an air emergency. Everyone is at risk. Stay indoors, avoid all outdoor activity, and follow safety alerts. Let's protect our breath, our health, and each other.";
             }
         }
 
