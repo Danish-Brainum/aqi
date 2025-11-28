@@ -5,7 +5,7 @@
             <h3 class="text-lg font-semibold text-slate-800">Incoming WhatsApp Messages</h3>
             <div class="flex items-center gap-4">
                 <div class="text-sm text-slate-600">
-                    Total: <span id="messages-total-count" class="font-semibold">{{ $totalCount ?? $messages->total() }}</span> | 
+                    Total: <span id="messages-total-count" class="font-semibold">{{ $messagesTotalCount ?? ($messages->total() ?? 0) }}</span> | 
                     Unread: <span id="messages-unread-count" class="font-semibold text-red-600">{{ $unreadCount ?? 0 }}</span>
                 </div>
                 <button id="mark-all-read-btn" 
@@ -123,59 +123,6 @@
 </section>
 
 <script>
-function markAsRead(messageId) {
-    fetch(`/incoming-messages/${messageId}/mark-as-read`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to mark message as read');
-    });
-}
-
-function deleteMessage(messageId) {
-    if (!confirm('Are you sure you want to delete this message?')) {
-        return;
-    }
-    
-    fetch(`/incoming-messages/${messageId}`, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to delete message');
-    });
-}
-
-// Refresh messages
-document.getElementById('refresh-messages-btn')?.addEventListener('click', function() {
-    location.reload();
-});
-
 // Mark all as read
 document.getElementById('mark-all-read-btn')?.addEventListener('click', function() {
     fetch('/incoming-messages/mark-all-as-read', {
@@ -188,7 +135,12 @@ document.getElementById('mark-all-read-btn')?.addEventListener('click', function
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            // Trigger refresh instead of reload
+            if (window.refreshIncomingMessages) {
+                window.refreshIncomingMessages();
+            } else {
+                location.reload();
+            }
         } else {
             alert('Error: ' + data.message);
         }

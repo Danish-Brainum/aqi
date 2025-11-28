@@ -38,9 +38,28 @@ class IncomingWhatsappMessageController extends Controller
             $totalCount = IncomingWhatsappMessage::count();
             $unreadCount = IncomingWhatsappMessage::where('read', false)->count();
             
+            // Format messages for JSON response
+            $formattedMessages = collect($messages->items())->map(function ($message) {
+                return [
+                    'id' => $message->id,
+                    'from' => $message->from,
+                    'message_id' => $message->message_id,
+                    'type' => $message->type,
+                    'message' => $message->message,
+                    'media_id' => $message->media_id,
+                    'mime_type' => $message->mime_type,
+                    'latitude' => $message->latitude,
+                    'longitude' => $message->longitude,
+                    'timestamp' => $message->timestamp,
+                    'read' => $message->read,
+                    'created_at' => $message->created_at->toISOString(),
+                    'updated_at' => $message->updated_at->toISOString(),
+                ];
+            })->toArray();
+            
             return response()->json([
                 'success' => true,
-                'messages' => $messages->items(),
+                'messages' => $formattedMessages,
                 'totalCount' => $totalCount,
                 'unreadCount' => $unreadCount,
                 'pagination' => [
