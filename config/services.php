@@ -41,6 +41,7 @@ return [
         'version' => env('WHATSAPP_API_VERSION'),
         'template_name' => env('WHATSAPP_TEMPLATE_NAME', 'pulmonol'),
         'template_language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'en'),
+        'webhook_verify_token' => env('WHATSAPP_WEBHOOK_VERIFY_TOKEN'),
     ],
     'IQAir' => [
         'token' => env('IQAIR_API_KEY')

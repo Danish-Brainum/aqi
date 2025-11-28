@@ -4,6 +4,7 @@ use App\Http\Controllers\AQIController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\WhatsappRecipientController;
+use App\Http\Controllers\WhatsappWebhookController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -52,3 +53,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.post');
 });
+
+// WhatsApp Webhook routes (must be outside auth middleware and CSRF protection)
+Route::get('/webhook/whatsapp', [WhatsappWebhookController::class, 'verify'])->name('whatsapp.webhook.verify');
+Route::post('/webhook/whatsapp', [WhatsappWebhookController::class, 'receive'])->middleware(['throttle:60,1'])->name('whatsapp.webhook.receive');
