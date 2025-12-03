@@ -7,8 +7,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schedule;
 
-
-
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
@@ -18,7 +16,6 @@ Artisan::command('inspire', function () {
 // // Schedule::command('app:email-message')->dailyAt('9:00')->withoutOverlapping();
 // Schedule::command('app:email-message')->everyMinute()->withoutOverlapping();
 // Schedule::command('app:whatsapp-message')->everyMinute()->withoutOverlapping();
-
 
 try {
     // get the single global settings row
@@ -51,7 +48,18 @@ try {
         ->appendOutputTo(storage_path('logs/aqi_fetch.log'))
         ->runInBackground();
 
-    Log::info("📅 [Scheduler] AQI updates scheduled: Morning at {$morningUpdateTime} (2 hours before {$morningTime->format('H:i')}), Evening at {$eveningUpdateTime} (2 hours before {$eveningTime->format('H:i')})");
+    // Log only once per hour to prevent duplicate logs from multiple processes
+    // Check if we're running schedule:run command and log only if lock file is old
+    if (php_sapi_name() === 'cli' && isset($_SERVER['argv'][1]) && $_SERVER['argv'][1] === 'schedule:run') {
+        $lockFile = storage_path('logs/scheduler_log.lock');
+        $lastLogTime = @filemtime($lockFile);
+        
+        // Only log once per hour (3600 seconds)
+        if (!$lastLogTime || (time() - $lastLogTime) > 3600) {
+            Log::info("📅 [Scheduler] AQI updates scheduled: Morning at {$morningUpdateTime} (40 minutes before {$morningTime->format('H:i')}), Evening at {$eveningUpdateTime} (40 minutes before {$eveningTime->format('H:i')})");
+            @touch($lockFile);
+        }
+    }
 
     // Schedule: both commands in morning
     Schedule::command('app:email-message')

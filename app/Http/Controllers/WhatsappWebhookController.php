@@ -50,8 +50,13 @@ class WhatsappWebhookController extends Controller
         try {
             $data = $request->all();
             
+            // Log only essential info to avoid "Over 9 levels deep" error
+            $hasMessages = isset($data['entry'][0]['changes'][0]['value']['messages']);
+            $hasStatuses = isset($data['entry'][0]['changes'][0]['value']['statuses']);
+            
             Log::info('📩 WhatsApp Webhook Received', [
-                'payload' => $data,
+                'type' => $hasMessages ? 'incoming_message' : ($hasStatuses ? 'status_update' : 'other'),
+                'entry_count' => count($data['entry'] ?? []),
             ]);
 
             // Check if this is a valid WhatsApp webhook
@@ -72,7 +77,8 @@ class WhatsappWebhookController extends Controller
         } catch (\Exception $e) {
             Log::error('💥 WhatsApp Webhook Error: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
-                'payload' => $request->all(),
+                'error_line' => $e->getLine(),
+                'error_file' => $e->getFile(),
             ]);
 
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
@@ -99,7 +105,12 @@ class WhatsappWebhookController extends Controller
             if (isset($change['value']['statuses'])) {
                 // Process message status updates (delivered, read, etc.)
                 foreach ($change['value']['statuses'] as $status) {
-                    $this->processStatus($status);
+                    try {
+                        $this->processStatus($status);
+                    } catch (\Exception $e) {
+                        // Catch any errors during status processing to prevent webhook from failing
+                        Log::error('Error processing status update: ' . $e->getMessage());
+                    }
                 }
             }
         }
@@ -371,23 +382,47 @@ class WhatsappWebhookController extends Controller
      */
     private function processStatus(array $status)
     {
+        // Safely extract status data to avoid normalization errors
         $messageId = $status['id'] ?? null;
         $recipientId = $status['recipient_id'] ?? null;
         $statusType = $status['status'] ?? null;
         $timestamp = $status['timestamp'] ?? null;
+        
+        // Extract error details if message failed
+        $errors = null;
+        if (isset($status['errors']) && is_array($status['errors'])) {
+            $errors = array_map(function($error) {
+                return [
+                    'code' => $error['code'] ?? null,
+                    'title' => $error['title'] ?? null,
+                    'message' => $error['message'] ?? null,
+                    'error_data' => $error['error_data'] ?? null,
+                ];
+            }, $status['errors']);
+        }
 
-        Log::info('📊 Message Status Update', [
-            'message_id' => $messageId,
-            'recipient_id' => $recipientId,
-            'status' => $statusType,
-            'timestamp' => $timestamp,
-        ]);
+        if ($statusType === 'failed') {
+            Log::warning('❌ WhatsApp Message Failed', [
+                'message_id' => $messageId,
+                'recipient_id' => $recipientId,
+                'status' => $statusType,
+                'timestamp' => $timestamp,
+                'errors' => $errors,
+            ]);
+        } else {
+            Log::info('📊 Message Status Update', [
+                'message_id' => $messageId,
+                'recipient_id' => $recipientId,
+                'status' => $statusType,
+                'timestamp' => $timestamp,
+            ]);
+        }
 
         // TODO: Add your business logic here
         // Examples:
         // - Update message status in database
         // - Track delivery rates
-        // - Handle failed messages
+        // - Handle failed messages (retry, notify admin, etc.)
     }
 
     /**
