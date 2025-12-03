@@ -402,13 +402,44 @@ class WhatsappWebhookController extends Controller
         }
 
         if ($statusType === 'failed') {
-            Log::warning('❌ WhatsApp Message Failed', [
-                'message_id' => $messageId,
-                'recipient_id' => $recipientId,
-                'status' => $statusType,
-                'timestamp' => $timestamp,
-                'errors' => $errors,
-            ]);
+            // Check for specific error codes
+            $errorCode = null;
+            $errorMessage = null;
+            
+            if ($errors && is_array($errors) && count($errors) > 0) {
+                $errorCode = $errors[0]['code'] ?? null;
+                $errorMessage = $errors[0]['message'] ?? null;
+            }
+            
+            // Error 131049 = Recipient blocked/reported spam
+            if ($errorCode == 131049) {
+                Log::warning('⚠️ WhatsApp Message Blocked (131049)', [
+                    'message_id' => $messageId,
+                    'recipient_id' => $recipientId,
+                    'status' => $statusType,
+                    'error_code' => $errorCode,
+                    'error_message' => $errorMessage ?? 'Recipient may have blocked or reported as spam',
+                    'action' => 'Consider removing this recipient from active list',
+                ]);
+                
+                // Optionally: Auto-deactivate recipient if they're blocked
+                // Uncomment below to auto-deactivate blocked recipients
+                /*
+                if ($recipientId) {
+                    \App\Models\WhatsappRecipient::where('phone', $recipientId)
+                        ->update(['active' => false]);
+                    Log::info("🔕 Auto-deactivated recipient {$recipientId} due to block/spam report");
+                }
+                */
+            } else {
+                Log::warning('❌ WhatsApp Message Failed', [
+                    'message_id' => $messageId,
+                    'recipient_id' => $recipientId,
+                    'status' => $statusType,
+                    'timestamp' => $timestamp,
+                    'errors' => $errors,
+                ]);
+            }
         } else {
             Log::info('📊 Message Status Update', [
                 'message_id' => $messageId,

@@ -74,11 +74,23 @@ class SendWhatsappMessageJob implements ShouldQueue
             if (isset($resp['messages'][0]['id'])) {
                 Log::info("✅ WhatsApp message sent to {$this->to} for city {$this->city} (AQI {$this->aqi})");
             } else {
-                Log::error("❌ WhatsApp message failed for {$this->to}", ['response' => $resp]);
-                
-                // Log error details if available
+                // Check if it's an API error (immediate failure)
                 if (isset($resp['error'])) {
-                    Log::error("WhatsApp API Error: " . json_encode($resp['error']));
+                    $errorCode = $resp['error']['code'] ?? null;
+                    $errorMessage = $resp['error']['message'] ?? 'Unknown error';
+                    
+                    // Handle specific error codes
+                    if ($errorCode == 131049) {
+                        Log::warning("⚠️ WhatsApp message blocked for {$this->to} - Recipient may have blocked or reported as spam. Error: {$errorMessage}");
+                    } else {
+                        Log::error("❌ WhatsApp API error for {$this->to}: [{$errorCode}] {$errorMessage}", [
+                            'error' => $resp['error'],
+                            'city' => $this->city,
+                            'aqi' => $this->aqi,
+                        ]);
+                    }
+                } else {
+                    Log::error("❌ WhatsApp message failed for {$this->to} - Unknown error", ['response' => $resp]);
                 }
             }
         } catch (Exception $exception) {
